@@ -1,5 +1,14 @@
 "use strict";
 
+// Si algo falla, que se vea en pantalla en vez de que el botón «no haga nada».
+window.addEventListener("error", (e) => {
+  const t = document.getElementById("toast");
+  if (!t) return;
+  t.textContent = `Error: ${e.message}. Cierra la app del todo y vuelve a abrirla.`;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 6000);
+});
+
 const CATEGORIAS = [
   { id: "comida", nombre: "Comida", emoji: "🍝" },
   { id: "tabaco", nombre: "Tabaco", emoji: "🚬" },

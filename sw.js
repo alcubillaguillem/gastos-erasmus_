@@ -1,7 +1,7 @@
 // Service worker: permite abrir la app sin conexión (los datos necesitan internet en modo Supabase).
-const CACHE = "gastos-erasmus-v5";
+const CACHE = "gastos-erasmus-v7";
 const ASSETS = [
-  "./", "index.html", "styles.css", "app.js", "charts.js", "config.js", "manifest.webmanifest",
+  "./", "index.html", "styles.css?v=7", "app.js?v=7", "charts.js?v=7", "config.js?v=7", "manifest.webmanifest",
   "vendor/supabase-js-2.117.3.js",
   "icons/icon.svg", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png",
 ];
@@ -25,7 +25,9 @@ self.addEventListener("fetch", (e) => {
   const cacheable = e.request.method === "GET" && url.origin === location.origin;
   if (!cacheable) return;
   e.respondWith(
-    fetch(e.request)
+    // "no-cache": siempre pregunta al servidor si hay versión nueva (evita mezclar
+    // archivos viejos y nuevos que el navegador tuviera guardados).
+    fetch(e.request, { cache: "no-cache" })
       .then((res) => {
         if (res.ok) {
           const copy = res.clone();
