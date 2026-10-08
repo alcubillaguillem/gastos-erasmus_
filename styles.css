@@ -245,3 +245,13 @@ ul.plain { list-style: none; padding: 0; margin: 8px 0; display: flex; flex-dire
 .steps ul.sub { margin: 6px 0 2px; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
 .steps .check { background: var(--chip); border-radius: 10px; padding: 10px 12px; margin: 4px 0 0; font-size: 14px; }
 .steps p { margin: 0 0 8px; }
+
+ol.flow { margin: 8px 0; padding-left: 22px; display: flex; flex-direction: column; gap: 4px; }
+.steps ol > li.group { list-style: none; margin: 10px 0 0; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); }
+.steps ol { list-style: none; counter-reset: paso; padding-left: 0; }
+.steps ol > li:not(.group) { counter-increment: paso; position: relative; padding-left: 26px; }
+.steps ol > li:not(.group)::before { content: counter(paso) "."; position: absolute; left: 0; top: 0; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cats-list { margin-top: 6px; background: var(--chip); border-radius: 8px; padding: 8px 10px; font-weight: 600; font-size: 14px; }
+table.fields { width: 100%; border-collapse: collapse; margin: 8px 0 6px; font-size: 13px; }
+table.fields th { text-align: left; color: var(--muted); font-weight: 600; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+table.fields td { padding: 6px; border-bottom: 1px solid var(--line); vertical-align: top; }

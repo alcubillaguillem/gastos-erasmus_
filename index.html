@@ -14,7 +14,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="styles.css?v=8">
+  <link rel="stylesheet" href="styles.css?v=9">
 </head>
 <body>
   <!-- Instrucciones para instalar la app (solo si se abre desde el navegador) -->
@@ -181,12 +181,13 @@
     </header>
 
     <section class="card intro">
-      <p>Vas a crear un atajo que apunta gastos sin abrir la app. Luego lo usarás de dos formas:</p>
-      <ul class="plain">
-        <li>🗣️ Diciendo <strong>«Oye Siri, apunta gasto»</strong> y después, por ejemplo, <strong>«5 euros de tabaco»</strong>.</li>
-        <li>👆 Tocando un <strong>widget</strong> en tu pantalla de inicio.</li>
-      </ul>
-      <p class="small muted">Se tarda unos 5 minutos y solo hay que hacerlo una vez. Ten esta pantalla abierta: irás copiando datos de aquí.</p>
+      <p>Vas a crear un atajo para apuntar gastos en segundos, sin abrir la app. Al tocarlo te pregunta:</p>
+      <ol class="flow">
+        <li><strong>Importe</strong> (por ejemplo, 4,50)</li>
+        <li><strong>Tipo de gasto</strong>, en un desplegable (Comida, Tabaco, Alcohol…)</li>
+        <li><strong>Info adicional</strong>, opcional (por ejemplo, «kebab con Marta»)</li>
+      </ol>
+      <p class="small muted">Lo tendrás en el <strong>Centro de control</strong> y también funciona con <strong>Siri</strong>. Se tarda unos 5 minutos y solo hay que hacerlo una vez. Ten esta pantalla abierta: irás copiando datos de aquí.</p>
     </section>
 
     <section class="card">
@@ -199,63 +200,89 @@
 
     <section class="card steps">
       <h2>Paso 1 · Crear el atajo</h2>
-      <p class="small muted">En cada paso, busca la acción escribiendo su nombre en la barra <strong>«Buscar acciones»</strong> y tócala para añadirla.</p>
+      <p class="small muted">Para añadir cada acción, escribe su nombre en la barra <strong>«Buscar acciones»</strong> de abajo y tócala. Las acciones se van poniendo una debajo de otra.</p>
       <ol>
         <li>Abre la app <strong>Atajos</strong> (viene en el iPhone) y toca <strong>+</strong> arriba a la derecha.</li>
         <li>Toca el nombre de arriba (<em>Nuevo atajo</em>), elige <strong>Cambiar nombre</strong> y escribe <strong>Apunta gasto</strong>.</li>
+
+        <li class="group">Pregunta 1 · Importe</li>
         <li>
           Añade <strong>Pedir entrada</strong>.<br>
-          Toca la palabra azul <em>Petición</em> y escribe: <strong>¿Qué has gastado?</strong>
+          Toca la palabra azul <em>Texto</em> y cámbiala a <strong>Número</strong>.<br>
+          Toca <em>Petición</em> y escribe <strong>Importe (€)</strong>.<br>
+          Toca la flecha <strong>›</strong> de la acción y activa <strong>Permitir decimales</strong>.
         </li>
+        <li>Añade <strong>Establecer variable</strong>. Toca <em>Nombre de la variable</em> y escribe <strong>Importe</strong>.</li>
+
+        <li class="group">Pregunta 2 · Tipo de gasto</li>
+        <li>
+          Añade <strong>Lista</strong>.<br>
+          Cambia <em>Uno</em> y <em>Dos</em> y toca <em>Añadir nuevo elemento</em> hasta tener estas 10, escritas tal cual:
+          <div class="cats-list">Comida · Tabaco · Alcohol · Ocio · Viajes · Transporte · Casa · Compras · Estudios · Otros</div>
+        </li>
+        <li>Añade <strong>Elegir de la lista</strong>. Toca la flecha <strong>›</strong> y en <em>Petición</em> escribe <strong>Tipo de gasto</strong>.</li>
+
+        <li class="group">Pregunta 3 · Info adicional</li>
+        <li>
+          Añade <strong>Pedir entrada</strong> (déjala en <em>Texto</em>).<br>
+          Toca <em>Petición</em> y escribe <strong>Info adicional (opcional)</strong>.
+        </li>
+        <li>Añade <strong>Establecer variable</strong> y llámala <strong>Nota</strong>.</li>
+
+        <li class="group">Guardar el gasto</li>
         <li>
           Añade <strong>Obtener contenido de URL</strong>.<br>
           Toca la palabra azul <em>URL</em>, bórrala y pega la <strong>① Dirección</strong>.
         </li>
         <li>
-          En esa misma acción toca la flecha <strong>›</strong> (Mostrar más) y rellena:
+          En esa acción toca la flecha <strong>›</strong> y rellena:
           <ul class="sub">
-            <li><strong>Método:</strong> cámbialo a <strong>POST</strong>.</li>
-            <li><strong>Encabezados:</strong> toca <em>Añadir nuevo encabezado</em>. En <em>Clave</em> escribe <code>apikey</code> y en <em>Texto</em> pega la <strong>② Clave</strong>.</li>
-            <li><strong>Cuerpo de la solicitud:</strong> deja <strong>JSON</strong>. Toca <em>Añadir nuevo campo › Texto</em>: en <em>Clave</em> escribe <code>p_token</code> y en <em>Texto</em> pega el <strong>③ Token</strong>.</li>
-            <li>Otra vez <em>Añadir nuevo campo › Texto</em>: en <em>Clave</em> escribe <code>p_texto</code>. En <em>Texto</em> no escribas nada: toca encima del teclado la burbuja <strong>Entrada proporcionada</strong>.</li>
+            <li><strong>Método:</strong> <strong>POST</strong>.</li>
+            <li><strong>Encabezados</strong> › <em>Añadir nuevo encabezado</em>: Clave <code>apikey</code>, Texto: pega la <strong>② Clave</strong>.</li>
+            <li><strong>Cuerpo de la solicitud:</strong> <strong>JSON</strong>. Toca <em>Añadir nuevo campo</em> 4 veces:
+              <table class="fields">
+                <tr><th>Tipo</th><th>Clave</th><th>Valor</th></tr>
+                <tr><td>Texto</td><td><code>p_token</code></td><td>pega el <strong>③ Token</strong></td></tr>
+                <tr><td>Número</td><td><code>p_importe</code></td><td>variable <strong>Importe</strong></td></tr>
+                <tr><td>Texto</td><td><code>p_categoria</code></td><td>variable <strong>Elemento elegido</strong></td></tr>
+                <tr><td>Texto</td><td><code>p_nota</code></td><td>variable <strong>Nota</strong></td></tr>
+              </table>
+              <span class="small muted">Para poner una variable, toca el campo Valor y elige su burbuja encima del teclado (o <em>Seleccionar variable</em>).</span>
+            </li>
           </ul>
         </li>
-        <li>
-          Añade <strong>Obtener valor del diccionario</strong>.<br>
-          Toca la palabra azul <em>Clave</em> y escribe <code>mensaje</code>.
-        </li>
-        <li>
-          Añade <strong>Mostrar notificación</strong>.<br>
-          Borra el texto <em>¡Hola, mundo!</em> y toca encima del teclado la burbuja <strong>Valor del diccionario</strong>.
-        </li>
-        <li>Toca <strong>OK</strong> arriba a la derecha. ¡Listo!</li>
+        <li>Añade <strong>Obtener valor del diccionario</strong>. Toca la palabra azul <em>Clave</em> y escribe <code>mensaje</code>.</li>
+        <li>Añade <strong>Mostrar notificación</strong>. Borra <em>¡Hola, mundo!</em> y pon la burbuja <strong>Valor del diccionario</strong>.</li>
+        <li>Toca <strong>OK</strong> arriba a la derecha.</li>
       </ol>
-      <p class="check">✅ <strong>Pruébalo:</strong> toca el atajo, escribe <em>1 euro prueba</em> y te saldrá «Apuntado: 1,00 € en Otros». Lo verás en la app (puedes borrarlo).</p>
+      <p class="check">✅ <strong>Pruébalo:</strong> toca el atajo, pon <em>1</em>, elige <em>Otros</em> y escribe <em>prueba</em>. Te saldrá «Apuntado: 1,00 € en Otros» y lo verás en la app (luego lo puedes borrar).</p>
     </section>
 
     <section class="card steps">
-      <h2>Paso 2 · Poner el widget</h2>
+      <h2>Paso 2 · Ponerlo en el Centro de control</h2>
+      <p class="small muted">Necesitas iOS 18 o posterior.</p>
       <ol>
-        <li>Ve a la pantalla de inicio y mantén el dedo en un hueco vacío hasta que los iconos tiemblen.</li>
-        <li>Toca <strong>Editar</strong> (arriba a la izquierda) y luego <strong>Añadir widget</strong>.</li>
-        <li>Busca <strong>Atajos</strong>, elige el tamaño pequeño y toca <strong>Añadir widget</strong>.</li>
-        <li>Con los iconos aún temblando, toca el widget nuevo y elige <strong>Apunta gasto</strong>.</li>
-        <li>Toca fuera para terminar. Ahora, al tocar el widget te preguntará qué has gastado.</li>
+        <li>Desliza hacia abajo desde la esquina superior derecha para abrir el <strong>Centro de control</strong>.</li>
+        <li>Toca el <strong>+</strong> de arriba a la izquierda (o mantén el dedo en un hueco vacío).</li>
+        <li>Toca <strong>Añadir un control</strong> abajo, busca <strong>Atajos</strong> y elige <strong>Atajo</strong>.</li>
+        <li>Toca el control nuevo y elige <strong>Apunta gasto</strong>. Puedes arrastrarlo donde quieras.</li>
+        <li>Toca un hueco vacío para terminar.</li>
       </ol>
+      <p class="small muted">Si lo prefieres, también puedes ponerlo en la <strong>pantalla bloqueada</strong> (mantén pulsada la pantalla bloqueada › Personalizar), en el <strong>botón de Acción</strong> (Ajustes › Botón de Acción › Atajo) o como widget en la pantalla de inicio.</p>
     </section>
 
     <section class="card steps">
       <h2>Paso 3 · Usarlo con Siri</h2>
-      <p>No hay que configurar nada más. Di <strong>«Oye Siri, apunta gasto»</strong> y, cuando te pregunte, contesta con el importe y en qué: <em>«12,50 cena kebab»</em>, <em>«3 cervezas 7 euros»</em>, <em>«billete de bus 1,60»</em>.</p>
-      <p class="small muted">La categoría se adivina por las palabras (tabaco, cerveza, cena, súper, bus, vuelo, fiesta…). Si no la reconoce, va a <em>Otros</em> y la puedes cambiar en la app.</p>
+      <p>No hay que configurar nada más. Di <strong>«Oye Siri, apunta gasto»</strong> y Siri te hará las mismas tres preguntas en voz alta.</p>
     </section>
 
     <section class="card steps">
       <h2>¿Algo no funciona?</h2>
       <ul class="plain small">
         <li><strong>«token no válido»:</strong> vuelve a copiar y pegar el ③ Token.</li>
-        <li><strong>Error 401 o «No API key»:</strong> revisa el encabezado <code>apikey</code> (paso 1.5).</li>
+        <li><strong>Error 401 o «No API key»:</strong> revisa el encabezado <code>apikey</code>.</li>
         <li><strong>Error 404:</strong> la ① Dirección no está entera; cópiala de nuevo.</li>
+        <li><strong>Todo sale en Otros:</strong> revisa que en la <em>Lista</em> los nombres estén escritos tal cual, sin emojis.</li>
         <li><strong>La notificación sale vacía:</strong> en <em>Obtener valor del diccionario</em> la clave debe ser exactamente <code>mensaje</code>.</li>
       </ul>
       <button type="button" id="regen-token" class="btn ghost wide">Generar token nuevo</button>
@@ -266,9 +293,9 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="config.js?v=8"></script>
+  <script src="config.js?v=9"></script>
   <script src="vendor/supabase-js-2.117.3.js"></script>
-  <script src="charts.js?v=8"></script>
-  <script src="app.js?v=8"></script>
+  <script src="charts.js?v=9"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>
