@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Gastos Erasmus</title>
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Gastos">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Pantalla de acceso (solo si hay Supabase configurado) -->
+  <section id="login" class="screen hidden">
+    <div class="login-card">
+      <h1>💶 Gastos Erasmus</h1>
+      <p class="muted">Entra para sincronizar tus gastos entre el móvil y el ordenador.</p>
+      <form id="login-form">
+        <input id="login-email" type="email" placeholder="Email" autocomplete="email" required>
+        <input id="login-pass" type="password" placeholder="Contraseña (mín. 6)" autocomplete="current-password" minlength="6" required>
+        <button type="submit" class="btn primary">Entrar</button>
+        <button type="button" id="signup-btn" class="btn ghost">Crear cuenta</button>
+      </form>
+      <p id="login-msg" class="msg"></p>
+    </div>
+  </section>
+
+  <main id="app" class="screen hidden">
+    <header class="top">
+      <button id="prev-month" class="icon-btn" aria-label="Mes anterior">‹</button>
+      <h1 id="month-label">—</h1>
+      <button id="next-month" class="icon-btn" aria-label="Mes siguiente">›</button>
+      <button id="open-settings" class="icon-btn settings" aria-label="Ajustes">⚙︎</button>
+    </header>
+
+    <section class="card summary">
+      <div class="summary-row">
+        <div>
+          <div class="label">Gastado este mes</div>
+          <div id="month-total" class="big">0,00 €</div>
+        </div>
+        <div class="right">
+          <div class="label">Hoy</div>
+          <div id="today-total" class="mid">0,00 €</div>
+        </div>
+      </div>
+      <div id="budget-box" class="budget hidden">
+        <div class="bar"><div id="budget-fill" class="fill"></div></div>
+        <div id="budget-text" class="small muted"></div>
+      </div>
+      <div id="mode-badge" class="small muted"></div>
+    </section>
+
+    <section class="card add">
+      <form id="add-form" autocomplete="off">
+        <div class="amount-row">
+          <input id="amount" type="text" inputmode="decimal" placeholder="0,00" aria-label="Importe" required>
+          <span class="euro">€</span>
+        </div>
+        <div id="cat-grid" class="cat-grid" role="radiogroup" aria-label="Categoría"></div>
+        <div class="extra-row">
+          <input id="note" type="text" placeholder="Nota (opcional)" maxlength="80">
+          <input id="date" type="date" aria-label="Fecha">
+        </div>
+        <button type="submit" class="btn primary wide">Añadir gasto</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Por categoría</h2>
+      <div id="breakdown" class="breakdown"></div>
+    </section>
+
+    <section class="card">
+      <h2>Movimientos</h2>
+      <div id="list" class="list"></div>
+    </section>
+  </main>
+
+  <!-- Ajustes -->
+  <dialog id="settings">
+    <form method="dialog" class="sheet">
+      <h2>Ajustes</h2>
+      <label class="field">Presupuesto mensual (€)
+        <input id="budget-input" type="text" inputmode="decimal" placeholder="Ej. 600">
+      </label>
+      <button type="button" id="save-budget" class="btn primary">Guardar presupuesto</button>
+
+      <hr>
+      <button type="button" id="export-csv" class="btn ghost">Exportar a Excel (CSV)</button>
+
+      <div id="shortcut-box" class="hidden">
+        <hr>
+        <h3>Atajo de Siri / widget</h3>
+        <p class="small muted">Copia estos datos en el Atajo de iOS. No compartas el token con nadie.</p>
+        <label class="field">URL<input id="sc-url" readonly></label>
+        <label class="field">Clave anon<input id="sc-key" readonly></label>
+        <label class="field">Token<input id="sc-token" readonly></label>
+        <button type="button" id="regen-token" class="btn ghost">Generar token nuevo</button>
+      </div>
+
+      <div id="account-box" class="hidden">
+        <hr>
+        <p id="account-email" class="small muted"></p>
+        <button type="button" id="logout" class="btn danger">Cerrar sesión</button>
+      </div>
+
+      <hr>
+      <button value="close" class="btn">Cerrar</button>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
