@@ -17,6 +17,16 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <!-- Instrucciones para instalar la app (solo si se abre desde el navegador) -->
+  <aside id="install-hint" class="install-hint hidden">
+    <div class="install-text">
+      <strong>📲 Instala la app</strong>
+      <span id="install-steps"></span>
+    </div>
+    <button type="button" id="install-btn" class="btn primary hidden">Instalar</button>
+    <button type="button" id="install-close" class="install-close" aria-label="Cerrar">✕</button>
+  </aside>
+
   <!-- Pantalla de acceso (solo si hay Supabase configurado) -->
   <section id="login" class="screen hidden">
     <div class="login-card">

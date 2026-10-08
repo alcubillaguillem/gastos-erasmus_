@@ -186,3 +186,14 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
   font-size: 13px; line-height: 1.35; font-variant-numeric: tabular-nums; transition: opacity .12s;
 }
 .tooltip.show { opacity: 1; }
+
+/* ---------- Aviso de instalación ---------- */
+.install-hint {
+  max-width: 528px; margin: 12px auto 0; display: flex; align-items: center; gap: 10px;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 12px 12px 12px 14px; font-size: 14px; width: calc(100% - 32px);
+}
+.install-text { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.install-text span { color: var(--muted); }
+.install-close { background: none; border: none; color: var(--muted); font-size: 16px; padding: 4px 6px; cursor: pointer; align-self: flex-start; }
+#install-btn { padding: 8px 12px; font-size: 14px; }

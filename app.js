@@ -512,10 +512,53 @@ function mostrarLogin() {
   $("#login").classList.remove("hidden");
 }
 
+/* ---------- Aviso de instalación ---------- */
+
+function avisoInstalacion() {
+  const instalada = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  const cerrado = safeStorage(() => localStorage.getItem("gastos-erasmus:aviso-instalar"), null);
+  if (instalada || cerrado) return;
+
+  const ua = navigator.userAgent;
+  const ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const android = /Android/.test(ua);
+  const enApp = /FBAN|FBAV|Instagram|WhatsApp|Line\//.test(ua);
+  const safari = ios && /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
+  let pasos = "";
+  if (ios && (!safari || enApp)) {
+    pasos = "Abre este enlace en Safari (si vienes de WhatsApp, pulsa el icono de la brújula o «Abrir en Safari»). Luego pulsa Compartir ⬆️ y «Añadir a pantalla de inicio».";
+  } else if (ios) {
+    pasos = "Pulsa Compartir ⬆️ abajo y luego «Añadir a pantalla de inicio».";
+  } else if (android) {
+    pasos = "Pulsa el menú ⋮ del navegador y luego «Instalar aplicación» o «Añadir a pantalla de inicio».";
+  } else {
+    return; // En el ordenador no hace falta insistir.
+  }
+  $("#install-steps").textContent = pasos;
+  $("#install-hint").classList.remove("hidden");
+
+  // Chrome en Android permite instalar con un botón.
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    const btn = $("#install-btn");
+    btn.classList.remove("hidden");
+    btn.onclick = async () => {
+      e.prompt();
+      await e.userChoice.catch(() => {});
+      $("#install-hint").classList.add("hidden");
+    };
+  });
+  $("#install-close").addEventListener("click", () => {
+    $("#install-hint").classList.add("hidden");
+    safeStorage(() => localStorage.setItem("gastos-erasmus:aviso-instalar", "1"));
+  });
+}
+
 /* ---------- Arranque ---------- */
 
 function init() {
   renderCategoryPicker();
+  avisoInstalacion();
   const errOAuth = new URLSearchParams(location.search).get("error_description");
   if (errOAuth) {
     $("#login-msg").textContent = `Error al entrar con Google: ${errOAuth}`;
