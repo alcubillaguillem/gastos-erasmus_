@@ -1,6 +1,6 @@
 # Gastos Erasmus
 
-App web instalable (PWA) para controlar los gastos del Erasmus por categorías, en el iPhone y en el ordenador, con sincronización mediante Supabase y atajos de Siri / widget para apuntar gastos en dos toques.
+App web instalable (PWA) para controlar los gastos del Erasmus por categorías, en el iPhone y en el ordenador, con sincronización mediante Supabase y un atajo de iOS en el Centro de control para apuntar gastos en segundos.
 
 - `index.html`, `styles.css`, `app.js`: la app. Sin dependencias de compilación; se sirve tal cual (GitHub Pages).
 - `config.js`: URL y clave pública de Supabase. Vacío = modo local (solo este navegador).

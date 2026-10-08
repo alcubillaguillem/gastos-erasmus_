@@ -684,7 +684,7 @@ function init() {
     document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
   }
 
-  // Al volver a la app (p. ej. tras añadir un gasto con Siri), recargar.
+  // Al volver a la app (p. ej. tras añadir un gasto desde el atajo), recargar.
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible" && !$("#app").classList.contains("hidden")) cargar();
   });

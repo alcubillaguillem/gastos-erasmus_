@@ -14,7 +14,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="styles.css?v=9">
+  <link rel="stylesheet" href="styles.css?v=10">
 </head>
 <body>
   <!-- Instrucciones para instalar la app (solo si se abre desde el navegador) -->
@@ -162,7 +162,7 @@
 
     <nav class="card menu">
       <button type="button" id="open-shortcuts" class="menu-row hidden">
-        <span>📲 Siri y widget del iPhone</span><span class="chev">›</span>
+        <span>📲 Apuntar gastos desde el Centro de control</span><span class="chev">›</span>
       </button>
       <button type="button" id="export-csv" class="menu-row">
         <span>📄 Exportar a Excel (CSV)</span><span class="chev">›</span>
@@ -172,11 +172,11 @@
     <button type="button" id="logout" class="btn danger wide hidden">Cerrar sesión</button>
   </section>
 
-  <!-- Ajustes > Siri y widget -->
+  <!-- Ajustes > Atajo del Centro de control -->
   <section id="shortcuts-screen" class="screen hidden" aria-labelledby="shortcuts-title">
     <header class="top sub-top">
       <button type="button" class="icon-btn back-btn" data-back aria-label="Volver">‹</button>
-      <h1 id="shortcuts-title">Siri y widget</h1>
+      <h1 id="shortcuts-title">Atajo de gastos</h1>
       <span class="top-spacer"></span>
     </header>
 
@@ -187,7 +187,7 @@
         <li><strong>Tipo de gasto</strong>, en un desplegable (Comida, Tabaco, Alcohol…)</li>
         <li><strong>Info adicional</strong>, opcional (por ejemplo, «kebab con Marta»)</li>
       </ol>
-      <p class="small muted">Lo tendrás en el <strong>Centro de control</strong> y también funciona con <strong>Siri</strong>. Se tarda unos 5 minutos y solo hay que hacerlo una vez. Ten esta pantalla abierta: irás copiando datos de aquí.</p>
+      <p class="small muted">Lo tendrás como un botón en el <strong>Centro de control</strong>. Se tarda unos 5 minutos y solo hay que hacerlo una vez. Ten esta pantalla abierta: irás copiando datos de aquí.</p>
     </section>
 
     <section class="card">
@@ -268,12 +268,7 @@
         <li>Toca el control nuevo y elige <strong>Apunta gasto</strong>. Puedes arrastrarlo donde quieras.</li>
         <li>Toca un hueco vacío para terminar.</li>
       </ol>
-      <p class="small muted">Si lo prefieres, también puedes ponerlo en la <strong>pantalla bloqueada</strong> (mantén pulsada la pantalla bloqueada › Personalizar), en el <strong>botón de Acción</strong> (Ajustes › Botón de Acción › Atajo) o como widget en la pantalla de inicio.</p>
-    </section>
-
-    <section class="card steps">
-      <h2>Paso 3 · Usarlo con Siri</h2>
-      <p>No hay que configurar nada más. Di <strong>«Oye Siri, apunta gasto»</strong> y Siri te hará las mismas tres preguntas en voz alta.</p>
+      <p class="check">✅ Ya está. Abre el Centro de control, toca <strong>Apunta gasto</strong> y responde las tres preguntas.</p>
     </section>
 
     <section class="card steps">
@@ -293,9 +288,9 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="config.js?v=9"></script>
+  <script src="config.js?v=10"></script>
   <script src="vendor/supabase-js-2.117.3.js"></script>
-  <script src="charts.js?v=9"></script>
-  <script src="app.js?v=9"></script>
+  <script src="charts.js?v=10"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>

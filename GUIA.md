@@ -47,49 +47,11 @@ Son 4 pasos. Solo hay que hacerlos una vez.
 - **Ordenador:** abre la misma dirección en Chrome, Edge o Safari. En Chrome puedes instalarla con el icono de la barra de direcciones.
 - La primera vez pulsa **Crear cuenta** con tu email y una contraseña. En el otro dispositivo, **Entrar** con los mismos datos.
 
-## 4. Atajos de Siri y widget
+## 4. Apuntar gastos desde el Centro de control
 
-Abre la app web, ve a **⚙︎ Ajustes › 📲 Siri y widget del iPhone** y copia la **① Dirección**, la **② Clave** y el **③ Token**. El token es tu llave personal: no lo compartas.
+La guía paso a paso está dentro de la app: **⚙︎ Ajustes › 📲 Apuntar gastos desde el Centro de control**. Ahí tienes tus datos (dirección, clave y token) con botones para copiarlos.
 
-> **Lo más fácil:** en la app, ve a **⚙︎ Ajustes › 📲 Siri y widget del iPhone**. Ahí tienes tus datos con botones para copiarlos y los pasos explicados uno a uno. Lo de abajo es lo mismo con más detalle, más un segundo atajo con botones.
-
-### Atajo A: "Apunta gasto" (para Siri, todo de una vez)
-
-Dices: *"Oye Siri, apunta gasto"*, Siri pregunta *"¿Qué has gastado?"* y respondes *"5 euros de tabaco"*.
-
-En la app **Atajos**, pulsa **+** y añade estas acciones en orden:
-
-1. **Pedir entrada**: tipo *Texto*, pregunta `¿Qué has gastado?`
-2. **Obtener contenido de URL**:
-   - URL: la **① Dirección** tal cual (ya termina en `/rest/v1/rpc/add_gasto_texto`)
-   - Pulsa la flecha para ver más opciones. **Método:** `POST`
-   - **Encabezados:** `apikey` = *tu ② Clave*
-   - **Cuerpo de solicitud:** *JSON*, con dos campos de texto:
-     - `p_token` = *tu ③ Token*
-     - `p_texto` = variable **Entrada proporcionada**
-3. **Obtener valor del diccionario**: clave `mensaje`
-4. **Mostrar notificación**: *Valor del diccionario*
-
-Renombra el atajo a **Apunta gasto**. Ese nombre es lo que le dices a Siri.
-
-La categoría se adivina por las palabras: *tabaco, cigarros* → Tabaco; *cerveza, birra, copa, chupito* → Alcohol; *cena, kebab, súper, Mercadona* → Comida; *bus, metro, taxi* → Transporte; *vuelo, Ryanair, hostel* → Viajes; *fiesta, discoteca, concierto* → Ocio, etc. Si no reconoce nada lo pone en *Otros*, y lo puedes corregir en la app.
-
-### Atajo B: "Gasto rápido" (para el widget, con botones)
-
-1. **Pedir entrada**: tipo *Número*, pregunta `¿Cuánto?`
-2. **Elegir de la lista**: escribe la lista `Comida, Tabaco, Alcohol, Ocio, Viajes, Transporte, Casa, Compras, Estudios, Otros`
-3. **Obtener contenido de URL**: igual que en el atajo A, pero:
-   - URL: la **① Dirección** quitando `_texto` del final (tiene que terminar en `/rest/v1/rpc/add_gasto`)
-   - Cuerpo JSON: `p_token` = *tu ③ Token* (texto), `p_importe` = **Entrada proporcionada** (tipo *Número*), `p_categoria` = **Elemento elegido** (texto)
-4. **Obtener valor del diccionario**: `mensaje`
-5. **Mostrar notificación**: *Valor del diccionario*
-
-### Ponerlo a mano
-
-- **Widget en la pantalla de inicio:** mantén pulsado un hueco de la pantalla, pulsa **Editar > Añadir widget > Atajos** y elige el tamaño pequeño con *Gasto rápido*.
-- **Pantalla bloqueada:** mantén pulsada la pantalla bloqueada, **Personalizar > Pantalla bloqueada > widgets > Atajos**.
-- **Botón de Acción** (iPhone 15 Pro o posterior): **Ajustes > Botón de Acción > Atajo > Gasto rápido**.
-- **Recordatorio diario:** en Atajos, **Automatización > + > Hora del día** (por ejemplo, 22:00) > **Ejecutar inmediatamente** > acción **Ejecutar atajo: Gasto rápido**, o simplemente **Mostrar notificación** "¿Has apuntado los gastos de hoy?".
+El atajo hace tres preguntas: **importe**, **tipo de gasto** (desplegable) e **info adicional** (opcional), y guarda el gasto llamando a `add_gasto`. Con iOS 18 o posterior se añade como botón al Centro de control.
 
 ## Si algo falla
 
