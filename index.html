@@ -14,7 +14,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="styles.css?v=12">
+  <link rel="stylesheet" href="styles.css?v=13">
 </head>
 <body>
   <!-- Instrucciones para instalar la app (solo si se abre desde el navegador) -->
@@ -193,9 +193,9 @@
       </section>
 
       <section class="card istep" id="istep-2">
-        <div class="istep-head"><span class="istep-num">2</span><div><h3>Añade el atajo</h3><p class="small muted">Se abrirá la app Atajos. Toca <strong>Configurar atajo</strong>, mantén el dedo en la casilla, pulsa <strong>Pegar</strong> y luego <strong>Añadir atajo</strong>.</p></div></div>
+        <div class="istep-head"><span class="istep-num">2</span><div><h3>Añade el atajo</h3><p id="istep-2-text" class="small muted">Se abrirá la app Atajos. Toca <strong>Configurar atajo</strong>, mantén el dedo en la casilla, pulsa <strong>Pegar</strong> y luego <strong>Añadir atajo</strong>.</p></div></div>
         <button type="button" id="open-shortcut" class="btn primary wide big-btn" disabled>Primero copia tu código</button>
-        <p id="shortcut-missing" class="small muted hidden">⏳ El atajo listo para instalar todavía no está publicado. Mientras tanto puedes crearlo a mano (abajo).</p>
+        <p id="shortcut-missing" class="small muted hidden">El atajo de un toque aún no está publicado, así que de momento hay que montarlo a mano una vez. Sigue la guía «Crear el atajo» de abajo, que ya está abierta.</p>
       </section>
 
       <section class="card istep" id="istep-3">
@@ -209,7 +209,7 @@
       </section>
     </div>
 
-    <details class="card manual">
+    <details class="card manual" id="manual-guide">
       <summary>¿Prefieres crearlo a mano?</summary>
     <div class="manual-block">
       <h3>Tus 3 datos</h3>
@@ -294,9 +294,9 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="config.js?v=12"></script>
+  <script src="config.js?v=13"></script>
   <script src="vendor/supabase-js-2.117.3.js"></script>
-  <script src="charts.js?v=12"></script>
-  <script src="app.js?v=12"></script>
+  <script src="charts.js?v=13"></script>
+  <script src="app.js?v=13"></script>
 </body>
 </html>

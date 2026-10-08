@@ -527,10 +527,13 @@ function pintarPasosInstalacion(copiado) {
   copy.classList.toggle("done", Boolean(copiado));
   $("#istep-1").classList.toggle("is-done", Boolean(copiado));
   $("#istep-2").classList.toggle("is-locked", !copiado);
-  open.classList.toggle("hidden", !hayAtajo);
   $("#shortcut-missing").classList.toggle("hidden", hayAtajo);
+  $("#istep-2-text").innerHTML = hayAtajo
+    ? "Se abrirá la app Atajos. Toca <strong>Configurar atajo</strong>, mantén el dedo en la casilla, pulsa <strong>Pegar</strong> y luego <strong>Añadir atajo</strong>."
+    : "Abre la app Atajos y crea el atajo siguiendo la guía de abajo. Cuando llegues al campo <strong>p_token</strong>, mantén el dedo y pulsa <strong>Pegar</strong>.";
+  if (!hayAtajo) $("#manual-guide").open = true;
   open.disabled = !copiado;
-  open.textContent = copiado ? "Añadir el atajo" : "Primero copia tu código";
+  open.textContent = !copiado ? "Primero copia tu código" : hayAtajo ? "Añadir el atajo" : "Abrir la app Atajos";
 }
 
 async function abrirAtajos() {
@@ -696,7 +699,7 @@ function init() {
       }
     });
     $("#open-shortcut").addEventListener("click", () => {
-      if (cfg.shortcutUrl) window.location.href = cfg.shortcutUrl;
+      window.location.href = cfg.shortcutUrl || "shortcuts://create-shortcut";
     });
     $("#regen-token").addEventListener("click", async () => {
       if (!confirm("El código anterior dejará de funcionar y tendrás que volver a instalar el atajo. ¿Seguir?")) return;
