@@ -12,6 +12,29 @@ Son 4 pasos. Solo hay que hacerlos una vez.
    - la clave **anon / publishable** (la pública, *no* la `service_role` / `secret`)
 5. Pásamelas (las dos son públicas, no pasa nada) y las pongo en `config.js`.
 
+## 1b. Seguridad y login con Google
+
+**Refuerzo de seguridad.** En el SQL Editor, ejecuta también `supabase/002_seguridad.sql` (New query, pegar y Run).
+
+**Contraseñas.** En **Authentication > Sign In / Providers > Email**, pon **Minimum password length** en 8 y activa **Prevent use of leaked passwords** si aparece. Supabase guarda las contraseñas cifradas con bcrypt: ni la app ni tú las veis nunca.
+
+**Login con Google:**
+1. Entra en https://console.cloud.google.com, crea un proyecto (por ejemplo `gastos-erasmus`).
+2. **APIs y servicios > Pantalla de consentimiento de OAuth** (o **Google Auth Platform**): tipo *Externo*, nombre de la app `Gastos Erasmus` y tu email. Guarda.
+3. **APIs y servicios > Credenciales > Crear credenciales > ID de cliente de OAuth**:
+   - Tipo: **Aplicación web**
+   - **Orígenes de JavaScript autorizados:** `https://alcubillaguillem.github.io`
+   - **URIs de redirección autorizados:** `https://oawjytdklkqhwtglfbhp.supabase.co/auth/v1/callback`
+   - Crear. Copia el **ID de cliente** y el **Secreto del cliente**.
+4. En Supabase: **Authentication > Sign In / Providers > Google**, actívalo y pega el ID y el secreto. Guarda. (El secreto no me lo pases a mí: va solo en Supabase.)
+5. En Supabase: **Authentication > URL Configuration**:
+   - **Site URL:** `https://alcubillaguillem.github.io/gastos-erasmus_/`
+   - **Redirect URLs:** añade `https://alcubillaguillem.github.io/gastos-erasmus_/`
+
+**Cerrar el registro.** Cuando ya hayas entrado una vez (con Google o email), ve a **Authentication > Sign In / Providers** y desactiva **Allow new users to sign up**. Así nadie más puede crearse una cuenta en tu base de datos.
+
+**Sesión recordada.** La app guarda la sesión en cada dispositivo y la renueva sola: solo tendrás que volver a entrar si pulsas *Cerrar sesión* o borras los datos del navegador.
+
 ## 2. Publicar la web (GitHub Pages, gratis)
 
 1. Yo subo el código a tu repositorio de GitHub.

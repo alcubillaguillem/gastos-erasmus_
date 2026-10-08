@@ -94,7 +94,20 @@ class SupabaseStore {
 
 const cfg = window.APP_CONFIG || {};
 const remote = Boolean(cfg.supabaseUrl && cfg.supabaseAnonKey && window.supabase);
-const sb = remote ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) : null;
+// La sesión se guarda en este dispositivo y se renueva sola: no hace falta volver a entrar
+// hasta que pulses "Cerrar sesión". Las contraseñas nunca pasan por esta app: Supabase las
+// guarda cifradas con bcrypt.
+const sb = remote
+  ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        flowType: "pkce",
+        storageKey: "gastos-erasmus-sesion",
+      },
+    })
+  : null;
 
 const state = {
   store: remote ? new SupabaseStore(sb) : new LocalStore(),
@@ -283,7 +296,12 @@ function cambiarMes(delta) {
 async function exportarCSV() {
   try {
     const todos = await state.store.listAll();
-    const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    // Evita que una nota como "=HYPERLINK(...)" se ejecute como fórmula al abrir el CSV en Excel.
+    const esc = (v) => {
+      let t = String(v ?? "");
+      if (/^[=+\-@\t\r]/.test(t)) t = "'" + t;
+      return `"${t.replace(/"/g, '""')}"`;
+    };
     const filas = [["Fecha", "Categoría", "Importe", "Nota"].join(";")];
     for (const g of todos) {
       filas.push([g.fecha, catInfo(g.categoria).nombre, String(g.importe).replace(".", ","), esc(g.nota)].join(";"));
@@ -325,11 +343,20 @@ async function entrar(ev) {
   $("#login-msg").textContent = error ? `Error: ${error.message}` : "";
 }
 
+async function entrarConGoogle() {
+  $("#login-msg").textContent = "Abriendo Google…";
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: location.origin + location.pathname },
+  });
+  if (error) $("#login-msg").textContent = `Error: ${error.message}`;
+}
+
 async function registrarse() {
   const email = $("#login-email").value.trim();
   const password = $("#login-pass").value;
-  if (!email || password.length < 6) {
-    $("#login-msg").textContent = "Escribe un email y una contraseña de al menos 6 caracteres.";
+  if (!email || password.length < 8) {
+    $("#login-msg").textContent = "Escribe un email y una contraseña de al menos 8 caracteres.";
     return;
   }
   $("#login-msg").textContent = "Creando cuenta…";
@@ -355,6 +382,11 @@ function mostrarLogin() {
 
 function init() {
   renderCategoryPicker();
+  const errOAuth = new URLSearchParams(location.search).get("error_description");
+  if (errOAuth) {
+    $("#login-msg").textContent = `Error al entrar con Google: ${errOAuth}`;
+    history.replaceState(null, "", location.pathname);
+  }
   $("#date").value = isoDate(new Date());
   $("#add-form").addEventListener("submit", añadir);
   $("#prev-month").addEventListener("click", () => cambiarMes(-1));
@@ -378,6 +410,7 @@ function init() {
   if (remote) {
     $("#login-form").addEventListener("submit", entrar);
     $("#signup-btn").addEventListener("click", registrarse);
+    $("#google-btn").addEventListener("click", entrarConGoogle);
     $("#logout").addEventListener("click", async () => {
       await sb.auth.signOut();
       $("#settings").close();
@@ -394,7 +427,10 @@ function init() {
     sb.auth.onAuthStateChange((_event, session) => {
       const prev = state.user?.id;
       state.user = session?.user || null;
-      if (!state.user) mostrarLogin();
+      if (!state.user) {
+        state.gastos = [];
+        mostrarLogin();
+      }
       else if (prev !== state.user.id) mostrarApp();
     });
   } else {
