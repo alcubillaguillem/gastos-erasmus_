@@ -14,7 +14,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="styles.css?v=10">
+  <link rel="stylesheet" href="styles.css?v=11">
 </head>
 <body>
   <!-- Instrucciones para instalar la app (solo si se abre desde el navegador) -->
@@ -200,38 +200,38 @@
 
     <section class="card steps">
       <h2>Paso 1 · Crear el atajo</h2>
-      <p class="small muted">Para añadir cada acción, escribe su nombre en la barra <strong>«Buscar acciones»</strong> de abajo y tócala. Las acciones se van poniendo una debajo de otra.</p>
+      <p class="small muted">Para añadir cada acción, escribe en la barra <strong>«Buscar acciones»</strong> la palabra que pone junto a 🔍 y toca la acción. Según la versión de iOS el nombre puede variar un poco; si tienes dudas, mándame captura. Las acciones se van poniendo una debajo de otra.</p>
       <ol>
         <li>Abre la app <strong>Atajos</strong> (viene en el iPhone) y toca <strong>+</strong> arriba a la derecha.</li>
         <li>Toca el nombre de arriba (<em>Nuevo atajo</em>), elige <strong>Cambiar nombre</strong> y escribe <strong>Apunta gasto</strong>.</li>
 
         <li class="group">Pregunta 1 · Importe</li>
         <li>
-          Añade <strong>Pedir entrada</strong>.<br>
+          Añade <strong>Solicitar entrada</strong> <span class="search">🔍 busca «entrada»</span>.<br>
           Toca la palabra azul <em>Texto</em> y cámbiala a <strong>Número</strong>.<br>
           Toca <em>Petición</em> y escribe <strong>Importe (€)</strong>.<br>
           Toca la flecha <strong>›</strong> de la acción y activa <strong>Permitir decimales</strong>.
         </li>
-        <li>Añade <strong>Establecer variable</strong>. Toca <em>Nombre de la variable</em> y escribe <strong>Importe</strong>.</li>
+        <li>Añade la acción de <strong>variable</strong> que dice <em>Definir/Ajustar variable</em> <span class="search">🔍 busca «variable»</span>. Toca <em>Nombre de la variable</em> y escribe <strong>Importe</strong>.</li>
 
         <li class="group">Pregunta 2 · Tipo de gasto</li>
         <li>
-          Añade <strong>Lista</strong>.<br>
+          Añade <strong>Lista</strong> <span class="search">🔍 busca «lista»</span> (la que solo dice «Lista»).<br>
           Cambia <em>Uno</em> y <em>Dos</em> y toca <em>Añadir nuevo elemento</em> hasta tener estas 10, escritas tal cual:
           <div class="cats-list">Comida · Tabaco · Alcohol · Ocio · Viajes · Transporte · Casa · Compras · Estudios · Otros</div>
         </li>
-        <li>Añade <strong>Elegir de la lista</strong>. Toca la flecha <strong>›</strong> y en <em>Petición</em> escribe <strong>Tipo de gasto</strong>.</li>
+        <li>Añade la acción para <strong>elegir de la lista</strong> <span class="search">🔍 busca «elegir»</span>. Toca la flecha <strong>›</strong> y en <em>Petición</em> escribe <strong>Tipo de gasto</strong>.</li>
 
         <li class="group">Pregunta 3 · Info adicional</li>
         <li>
-          Añade <strong>Pedir entrada</strong> (déjala en <em>Texto</em>).<br>
+          Añade otra vez <strong>Solicitar entrada</strong> <span class="search">🔍 busca «entrada»</span> y déjala en <em>Texto</em>.<br>
           Toca <em>Petición</em> y escribe <strong>Info adicional (opcional)</strong>.
         </li>
-        <li>Añade <strong>Establecer variable</strong> y llámala <strong>Nota</strong>.</li>
+        <li>Añade otra vez la acción de <strong>variable</strong> <span class="search">🔍 busca «variable»</span> y llámala <strong>Nota</strong>.</li>
 
         <li class="group">Guardar el gasto</li>
         <li>
-          Añade <strong>Obtener contenido de URL</strong>.<br>
+          Añade <strong>Obtener contenido de URL</strong> <span class="search">🔍 busca «URL»</span>.<br>
           Toca la palabra azul <em>URL</em>, bórrala y pega la <strong>① Dirección</strong>.
         </li>
         <li>
@@ -251,8 +251,8 @@
             </li>
           </ul>
         </li>
-        <li>Añade <strong>Obtener valor del diccionario</strong>. Toca la palabra azul <em>Clave</em> y escribe <code>mensaje</code>.</li>
-        <li>Añade <strong>Mostrar notificación</strong>. Borra <em>¡Hola, mundo!</em> y pon la burbuja <strong>Valor del diccionario</strong>.</li>
+        <li>Añade <strong>Obtener valor del diccionario</strong> <span class="search">🔍 busca «diccionario»</span>. Toca la palabra azul <em>Clave</em> y escribe <code>mensaje</code>.</li>
+        <li>Añade <strong>Mostrar notificación</strong> <span class="search">🔍 busca «notificación»</span>. Borra <em>¡Hola, mundo!</em> y pon la burbuja <strong>Valor del diccionario</strong>.</li>
         <li>Toca <strong>OK</strong> arriba a la derecha.</li>
       </ol>
       <p class="check">✅ <strong>Pruébalo:</strong> toca el atajo, pon <em>1</em>, elige <em>Otros</em> y escribe <em>prueba</em>. Te saldrá «Apuntado: 1,00 € en Otros» y lo verás en la app (luego lo puedes borrar).</p>
@@ -288,9 +288,9 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="config.js?v=10"></script>
+  <script src="config.js?v=11"></script>
   <script src="vendor/supabase-js-2.117.3.js"></script>
-  <script src="charts.js?v=10"></script>
-  <script src="app.js?v=10"></script>
+  <script src="charts.js?v=11"></script>
+  <script src="app.js?v=11"></script>
 </body>
 </html>

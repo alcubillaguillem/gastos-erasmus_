@@ -255,3 +255,5 @@ ol.flow { margin: 8px 0; padding-left: 22px; display: flex; flex-direction: colu
 table.fields { width: 100%; border-collapse: collapse; margin: 8px 0 6px; font-size: 13px; }
 table.fields th { text-align: left; color: var(--muted); font-weight: 600; padding: 4px 6px; border-bottom: 1px solid var(--line); }
 table.fields td { padding: 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+
+.search { display: inline-block; font-size: 12px; font-weight: 600; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 6px; padding: 0 6px; margin-left: 2px; white-space: nowrap; }
