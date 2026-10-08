@@ -1,4 +1,6 @@
 :root {
+  --series-1: #2a78d6;
+  --series-dim: #86b6ef;
   --bg: #f4f5f7;
   --card: #ffffff;
   --text: #111827;
@@ -19,11 +21,15 @@
     --line: #26304a;
     --accent: #3b82f6;
     --chip: #1e2740;
+    --series-1: #3987e5;
+    --series-dim: #184f95;
   }
 }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; }
+/* Sin zoom por doble toque; el texto no se reescala al girar el móvil. */
+html { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body {
   background: var(--bg);
   color: var(--text);
@@ -120,7 +126,7 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
 .sheet h2, .sheet h3 { margin: 0; }
 .sheet hr { border: none; border-top: 1px solid var(--line); width: 100%; margin: 6px 0; }
 .field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
-.field input { font-size: 14px; }
+.field input { font-size: 16px; } /* 16px evita el zoom automático de iOS al escribir */
 
 .login-card { margin-top: 15vh; text-align: center; }
 .login-card h1 { font-size: 28px; }
@@ -143,3 +149,40 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
 .btn.google { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 16px; background: #fff; color: #1f2937; border-color: #d1d5db; }
 .divider { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; margin: 16px 0 0; }
 .divider::before, .divider::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+
+/* ---------- Pestañas y cerrar sesión ---------- */
+.tabs-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
+.tabs { display: inline-flex; background: var(--chip); border: 1px solid var(--line); border-radius: 12px; padding: 3px; }
+.tab { font: inherit; font-size: 14px; font-weight: 600; border: none; background: transparent; color: var(--muted); padding: 7px 14px; border-radius: 9px; cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--card); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.btn.small-btn { font-size: 13px; padding: 8px 12px; background: transparent; color: var(--muted); }
+
+/* ---------- Dashboard ---------- */
+.kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.kpi { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; min-width: 0; }
+.kpi-num { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; margin: 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chart-sub { margin: -6px 0 8px; }
+.chart { width: 100%; overflow: hidden; }
+.chart svg { display: block; touch-action: pan-y; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .axis { stroke: var(--muted); stroke-opacity: .5; stroke-width: 1; }
+.chart .ref { stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 4 4; }
+.chart .tick { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.chart .tick-sel { fill: var(--text); font-weight: 600; }
+.chart .val { fill: var(--text); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.chart .cat-label { fill: var(--text); font-size: 13px; }
+.chart .bar-sel { fill: var(--series-1); }
+.chart .bar-dim { fill: var(--series-dim); }
+.chart .line { fill: none; stroke: var(--series-1); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .area { fill: var(--series-1); fill-opacity: .12; }
+.chart .dot { fill: var(--series-1); stroke: var(--card); stroke-width: 2; }
+.chart .cross { stroke: var(--muted); stroke-width: 1; }
+.chart .hit { fill: transparent; cursor: pointer; }
+
+.tooltip {
+  position: fixed; left: 0; top: 0; z-index: 50; pointer-events: none; opacity: 0;
+  background: var(--card); color: var(--text); border: 1px solid var(--line);
+  box-shadow: 0 4px 16px rgba(0,0,0,.18); border-radius: 10px; padding: 8px 10px;
+  font-size: 13px; line-height: 1.35; font-variant-numeric: tabular-nums; transition: opacity .12s;
+}
+.tooltip.show { opacity: 1; }

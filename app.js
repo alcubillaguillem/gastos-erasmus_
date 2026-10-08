@@ -114,7 +114,9 @@ const state = {
   year: new Date().getFullYear(),
   month: new Date().getMonth(),
   categoria: safeStorage(() => localStorage.getItem("gastos-erasmus:ultima-cat"), null) || "comida",
-  gastos: [],
+  gastos: [],   // gastos del mes seleccionado
+  rango: [],    // gastos de los últimos 6 meses (para los gráficos)
+  vista: safeStorage(() => localStorage.getItem("gastos-erasmus:vista"), null) || "gastos",
   presupuesto: 0,
   user: null,
 };
@@ -234,23 +236,154 @@ function render() {
   }
 }
 
-async function cargar() {
+const MESES_GRAFICO = 6;
+
+function rangoActual() {
+  const [from] = monthRange(state.year, state.month - (MESES_GRAFICO - 1));
+  const [, to] = monthRange(state.year, state.month);
+  return [from, to];
+}
+
+function aplicarRango() {
   const [from, to] = monthRange(state.year, state.month);
+  state.gastos = state.rango.filter((g) => g.fecha >= from && g.fecha <= to);
+}
+
+function pintar() {
+  render();
+  if (state.vista === "graficos") renderDashboard();
+}
+
+async function cargar() {
+  const [from, to] = rangoActual();
   try {
-    state.gastos = await state.store.listMonth(from, to);
+    state.rango = await state.store.listMonth(from, to);
   } catch (e) {
     console.error(e);
     toast("No se han podido cargar los gastos");
   }
-  render();
+  aplicarRango();
+  pintar();
+}
+
+/* ---------- Dashboard de gráficos ---------- */
+
+function renderDashboard() {
+  const { year, month } = state;
+  const hoy = new Date();
+  const esMesActual = hoy.getFullYear() === year && hoy.getMonth() === month;
+  const esFuturo = new Date(year, month, 1) > hoy;
+  const diasMes = new Date(year, month + 1, 0).getDate();
+  const diasTranscurridos = esMesActual ? hoy.getDate() : esFuturo ? 0 : diasMes;
+  const sum = (arr) => arr.reduce((s, g) => s + Number(g.importe), 0);
+  const nombreMes = (y, m, opts) => new Date(y, m, 1).toLocaleDateString("es-ES", opts);
+
+  // Totales de los últimos meses
+  const meses = [];
+  for (let i = MESES_GRAFICO - 1; i >= 0; i--) {
+    const d = new Date(year, month - i, 1);
+    const [from, to] = monthRange(d.getFullYear(), d.getMonth());
+    meses.push({
+      key: `${d.getFullYear()}-${d.getMonth()}`,
+      label: nombreMes(d.getFullYear(), d.getMonth(), { month: "short" }).replace(".", ""),
+      fullLabel: nombreMes(d.getFullYear(), d.getMonth(), { month: "long", year: "numeric" }),
+      value: sum(state.rango.filter((g) => g.fecha >= from && g.fecha <= to)),
+      selected: i === 0,
+    });
+  }
+  const anteriores = meses.slice(0, -1).filter((m) => m.value > 0);
+  const media = anteriores.length ? anteriores.reduce((s, m) => s + m.value, 0) / anteriores.length : 0;
+
+  const total = sum(state.gastos);
+  const anterior = meses[meses.length - 2];
+
+  // KPIs
+  $("#k-total").textContent = fmt(total);
+  if (anterior.value > 0) {
+    const pct = Math.round(((total - anterior.value) / anterior.value) * 100);
+    $("#k-vs").textContent = `${pct > 0 ? "+" : ""}${pct} % vs ${anterior.fullLabel.split(" ")[0]}`;
+  } else {
+    $("#k-vs").textContent = "";
+  }
+  const mediaDia = diasTranscurridos ? total / diasTranscurridos : 0;
+  $("#k-media").textContent = diasTranscurridos ? fmt(mediaDia) : "—";
+  $("#k-dias").textContent = diasTranscurridos ? `${diasTranscurridos} de ${diasMes} días` : "";
+  if (esMesActual) {
+    const prevision = mediaDia * diasMes;
+    $("#k-prev").textContent = fmt(prevision);
+    $("#k-prev-sub").textContent = state.presupuesto > 0
+      ? (prevision > state.presupuesto ? `${fmt(prevision - state.presupuesto)} por encima del presupuesto` : "dentro del presupuesto")
+      : "a este ritmo";
+  } else {
+    $("#k-prev").textContent = esFuturo ? "—" : fmt(total);
+    $("#k-prev-sub").textContent = esFuturo ? "" : "mes cerrado";
+  }
+  const porCat = {};
+  for (const g of state.gastos) porCat[g.categoria] = (porCat[g.categoria] || 0) + Number(g.importe);
+  const filas = Object.entries(porCat).sort((a, b) => b[1] - a[1]);
+  if (filas.length) {
+    const c = catInfo(filas[0][0]);
+    $("#k-top").textContent = `${c.emoji} ${c.nombre}`;
+    $("#k-top-sub").textContent = `${fmt(filas[0][1])} · ${Math.round((filas[0][1] / total) * 100)} %`;
+  } else {
+    $("#k-top").textContent = "—";
+    $("#k-top-sub").textContent = "";
+  }
+
+  // Gráficos
+  Charts.monthBars($("#chart-meses"), meses, {
+    average: media,
+    onSelect: (key) => {
+      const [y, m] = key.split("-").map(Number);
+      if (y === state.year && m === state.month) return;
+      Charts.hideTip();
+      state.year = y;
+      state.month = m;
+      cargar();
+    },
+  });
+
+  const dias = Array.from({ length: diasMes }, (_, i) => ({ day: i + 1, value: 0 }));
+  for (const g of state.gastos) {
+    const d = Number(g.fecha.slice(8, 10));
+    if (dias[d - 1]) dias[d - 1].value += Number(g.importe);
+  }
+  $("#acum-sub").textContent = state.presupuesto > 0
+    ? `Cómo vas respecto al presupuesto de ${fmt(state.presupuesto)}.`
+    : "Ponle un presupuesto en ⚙︎ Ajustes para ver la línea de referencia.";
+  Charts.cumulative($("#chart-acum"), dias, {
+    budget: state.presupuesto,
+    lastDay: diasTranscurridos,
+    monthLabel: nombreMes(year, month, { month: "long" }),
+  });
+
+  Charts.categoryBars($("#chart-cats"), filas.map(([id, v]) => ({ label: `${catInfo(id).emoji} ${catInfo(id).nombre}`, value: v })));
+}
+
+function cambiarVista(vista) {
+  state.vista = vista;
+  safeStorage(() => localStorage.setItem("gastos-erasmus:vista", vista));
+  $("#tab-gastos").setAttribute("aria-selected", String(vista === "gastos"));
+  $("#tab-graficos").setAttribute("aria-selected", String(vista === "graficos"));
+  $("#view-gastos").classList.toggle("hidden", vista !== "gastos");
+  $("#view-graficos").classList.toggle("hidden", vista !== "graficos");
+  Charts.hideTip();
+  if (vista === "graficos") renderDashboard();
+}
+
+async function cerrarSesion() {
+  if (!confirm("¿Cerrar sesión en este dispositivo?")) return;
+  $("#settings").open && $("#settings").close();
+  await sb.auth.signOut();
 }
 
 async function borrar(g) {
   if (!confirm(`¿Borrar ${fmt(g.importe)} de ${catInfo(g.categoria).nombre}?`)) return;
   try {
     await state.store.remove(g.id);
-    state.gastos = state.gastos.filter((x) => x.id !== g.id);
-    render();
+    state.rango = state.rango.filter((x) => x.id !== g.id);
+    aplicarRango();
+    pintar();
     toast("Gasto borrado");
   } catch (e) {
     console.error(e);
@@ -272,9 +405,10 @@ async function añadir(ev) {
   btn.disabled = true;
   try {
     const nuevo = await state.store.add(gasto);
-    const [from, to] = monthRange(state.year, state.month);
-    if (nuevo.fecha >= from && nuevo.fecha <= to) state.gastos.unshift(nuevo);
-    render();
+    const [from, to] = rangoActual();
+    if (nuevo.fecha >= from && nuevo.fecha <= to) state.rango.unshift(nuevo);
+    aplicarRango();
+    pintar();
     $("#amount").value = "";
     $("#note").value = "";
     toast(`Apuntado: ${fmt(importe)} en ${catInfo(gasto.categoria).nombre}`);
@@ -399,7 +533,7 @@ function init() {
     try {
       await state.store.setBudget(v);
       state.presupuesto = v;
-      render();
+      pintar();
       toast(v ? `Presupuesto: ${fmt(v)} al mes` : "Presupuesto quitado");
     } catch (e) {
       console.error(e);
@@ -411,10 +545,8 @@ function init() {
     $("#login-form").addEventListener("submit", entrar);
     $("#signup-btn").addEventListener("click", registrarse);
     $("#google-btn").addEventListener("click", entrarConGoogle);
-    $("#logout").addEventListener("click", async () => {
-      await sb.auth.signOut();
-      $("#settings").close();
-    });
+    $("#logout").addEventListener("click", cerrarSesion);
+    $("#logout-top").addEventListener("click", cerrarSesion);
     $("#regen-token").addEventListener("click", async () => {
       if (!confirm("El token anterior dejará de funcionar y tendrás que cambiarlo en el Atajo. ¿Seguir?")) return;
       const { data, error } = await sb.rpc("regenerar_token_atajo");
@@ -429,12 +561,30 @@ function init() {
       state.user = session?.user || null;
       if (!state.user) {
         state.gastos = [];
+        state.rango = [];
         mostrarLogin();
       }
       else if (prev !== state.user.id) mostrarApp();
     });
   } else {
+    $("#logout-top").classList.add("hidden");
     mostrarApp();
+  }
+
+  $("#tab-gastos").addEventListener("click", () => cambiarVista("gastos"));
+  $("#tab-graficos").addEventListener("click", () => cambiarVista("graficos"));
+  cambiarVista(state.vista);
+  let resizeTimer;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => { if (state.vista === "graficos") renderDashboard(); }, 150);
+  });
+  // Tocar fuera de un gráfico oculta el tooltip.
+  document.addEventListener("pointerdown", (e) => { if (!e.target.closest("svg")) Charts.hideTip(); });
+
+  // Sin zoom con dos dedos ni con doble toque (iOS ignora user-scalable=no en algunos casos).
+  for (const ev of ["gesturestart", "gesturechange", "gestureend"]) {
+    document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
   }
 
   // Al volver a la app (p. ej. tras añadir un gasto con Siri), recargar.

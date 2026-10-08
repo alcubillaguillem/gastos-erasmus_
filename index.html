@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>Gastos Erasmus</title>
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://oawjytdklkqhwtglfbhp.supabase.co wss://oawjytdklkqhwtglfbhp.supabase.co; object-src 'none'; base-uri 'none'; form-action 'self'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
@@ -45,6 +45,15 @@
       <button id="open-settings" class="icon-btn settings" aria-label="Ajustes">⚙︎</button>
     </header>
 
+    <nav class="tabs-row">
+      <div class="tabs" role="tablist">
+        <button type="button" class="tab" role="tab" id="tab-gastos" aria-selected="true" aria-controls="view-gastos">Gastos</button>
+        <button type="button" class="tab" role="tab" id="tab-graficos" aria-selected="false" aria-controls="view-graficos">Gráficos</button>
+      </div>
+      <button type="button" id="logout-top" class="btn small-btn">Cerrar sesión</button>
+    </nav>
+
+    <div id="view-gastos" role="tabpanel" aria-labelledby="tab-gastos">
     <section class="card summary">
       <div class="summary-row">
         <div>
@@ -87,7 +96,35 @@
       <h2>Movimientos</h2>
       <div id="list" class="list"></div>
     </section>
+    </div>
+
+    <div id="view-graficos" role="tabpanel" aria-labelledby="tab-graficos" class="hidden">
+      <section class="kpis">
+        <div class="kpi"><div class="label">Total del mes</div><div id="k-total" class="kpi-num">—</div><div id="k-vs" class="small muted"></div></div>
+        <div class="kpi"><div class="label">Media por día</div><div id="k-media" class="kpi-num">—</div><div id="k-dias" class="small muted"></div></div>
+        <div class="kpi"><div class="label">Previsión fin de mes</div><div id="k-prev" class="kpi-num">—</div><div id="k-prev-sub" class="small muted"></div></div>
+        <div class="kpi"><div class="label">Categoría principal</div><div id="k-top" class="kpi-num">—</div><div id="k-top-sub" class="small muted"></div></div>
+      </section>
+
+      <section class="card">
+        <h2>Gasto por mes</h2>
+        <p class="small muted chart-sub">Últimos 6 meses. Toca una barra para ver ese mes.</p>
+        <div id="chart-meses" class="chart"></div>
+      </section>
+
+      <section class="card">
+        <h2>Gasto acumulado en el mes</h2>
+        <p id="acum-sub" class="small muted chart-sub"></p>
+        <div id="chart-acum" class="chart"></div>
+      </section>
+
+      <section class="card">
+        <h2>Por categoría</h2>
+        <div id="chart-cats" class="chart"></div>
+      </section>
+    </div>
   </main>
+  <div id="tooltip" class="tooltip" role="status" aria-live="polite"></div>
 
   <!-- Ajustes -->
   <dialog id="settings">
@@ -126,6 +163,7 @@
 
   <script src="config.js"></script>
   <script src="vendor/supabase-js-2.117.3.js"></script>
+  <script src="charts.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
