@@ -1,5 +1,5 @@
 // Service worker: permite abrir la app sin conexión (los datos necesitan internet en modo Supabase).
-const CACHE = "gastos-erasmus-v4";
+const CACHE = "gastos-erasmus-v5";
 const ASSETS = [
   "./", "index.html", "styles.css", "app.js", "charts.js", "config.js", "manifest.webmanifest",
   "vendor/supabase-js-2.117.3.js",

@@ -373,7 +373,6 @@ function cambiarVista(vista) {
 
 async function cerrarSesion() {
   if (!confirm("¿Cerrar sesión en este dispositivo?")) return;
-  $("#settings").open && $("#settings").close();
   await sb.auth.signOut();
 }
 
@@ -452,18 +451,51 @@ async function exportarCSV() {
   }
 }
 
-async function abrirAjustes() {
+/* ---------- Pantallas (principal, ajustes, atajos) ---------- */
+
+const PANTALLAS = ["#login", "#app", "#settings-screen", "#shortcuts-screen"];
+let scrollPrincipal = 0;
+
+function mostrarPantalla(sel) {
+  if (!$("#app").classList.contains("hidden")) scrollPrincipal = window.scrollY;
+  for (const p of PANTALLAS) $(p).classList.toggle("hidden", p !== sel);
+  Charts.hideTip();
+  window.scrollTo(0, sel === "#app" ? scrollPrincipal : 0);
+}
+
+// Cada pantalla de ajustes es una entrada del historial: el botón «‹» y el gesto
+// o botón de atrás del móvil vuelven a la pantalla anterior.
+function pantallaDesdeHash() {
+  if (!state.user && remote) return;
+  if (location.hash === "#ajustes") mostrarPantalla("#settings-screen");
+  else if (location.hash === "#atajos" && remote) mostrarPantalla("#shortcuts-screen");
+  else mostrarPantalla("#app");
+}
+
+function abrirAjustes() {
   $("#budget-input").value = state.presupuesto ? String(state.presupuesto).replace(".", ",") : "";
-  if (remote) {
-    $("#shortcut-box").classList.remove("hidden");
+  if (remote && state.user) {
+    const u = state.user;
+    const proveedor = u.app_metadata?.provider === "google" ? "Google" : "email y contraseña";
     $("#account-box").classList.remove("hidden");
-    $("#account-email").textContent = `Conectado como ${state.user?.email || ""}`;
-    $("#sc-url").value = cfg.supabaseUrl;
-    $("#sc-key").value = cfg.supabaseAnonKey;
-    const { data, error } = await sb.rpc("mi_token_atajo");
-    $("#sc-token").value = error ? "Error: ¿has ejecutado schema.sql?" : data;
+    $("#account-email").textContent = u.email || "";
+    $("#account-avatar").textContent = (u.user_metadata?.full_name || u.email || "?").trim().charAt(0).toUpperCase();
+    $("#account-method").textContent = `Has entrado con ${proveedor}`;
+    $("#open-shortcuts").classList.remove("hidden");
+    $("#logout").classList.remove("hidden");
   }
-  $("#settings").showModal();
+  history.pushState({ p: "ajustes" }, "", "#ajustes");
+  mostrarPantalla("#settings-screen");
+}
+
+async function abrirAtajos() {
+  history.pushState({ p: "atajos" }, "", "#atajos");
+  mostrarPantalla("#shortcuts-screen");
+  $("#sc-url").value = cfg.supabaseUrl;
+  $("#sc-key").value = cfg.supabaseAnonKey;
+  $("#sc-token").value = "Cargando…";
+  const { data, error } = await sb.rpc("mi_token_atajo");
+  $("#sc-token").value = error ? "No se ha podido obtener el token" : data;
 }
 
 /* ---------- Acceso ---------- */
@@ -500,16 +532,16 @@ async function registrarse() {
 }
 
 async function mostrarApp() {
-  $("#login").classList.add("hidden");
-  $("#app").classList.remove("hidden");
+  if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+  mostrarPantalla("#app");
   state.presupuesto = await state.store.getBudget().catch(() => 0);
   await cargar();
   if (new URLSearchParams(location.search).has("nuevo")) $("#amount").focus();
 }
 
 function mostrarLogin() {
-  $("#app").classList.add("hidden");
-  $("#login").classList.remove("hidden");
+  if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+  mostrarPantalla("#login");
 }
 
 /* ---------- Aviso de instalación ---------- */
@@ -569,6 +601,19 @@ function init() {
   $("#prev-month").addEventListener("click", () => cambiarMes(-1));
   $("#next-month").addEventListener("click", () => cambiarMes(1));
   $("#open-settings").addEventListener("click", abrirAjustes);
+  $("#open-shortcuts").addEventListener("click", abrirAtajos);
+  document.querySelectorAll("[data-back]").forEach((b) => b.addEventListener("click", () => history.back()));
+  window.addEventListener("popstate", pantallaDesdeHash);
+  document.querySelectorAll("[data-copy]").forEach((b) => b.addEventListener("click", async () => {
+    const input = $(b.dataset.copy);
+    try {
+      await navigator.clipboard.writeText(input.value);
+    } catch {
+      input.select();
+      document.execCommand("copy");
+    }
+    toast("Copiado");
+  }));
   $("#export-csv").addEventListener("click", exportarCSV);
   $("#save-budget").addEventListener("click", async () => {
     const v = $("#budget-input").value.trim() === "" ? 0 : parseAmount($("#budget-input").value);

@@ -197,3 +197,44 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
 .install-text span { color: var(--muted); }
 .install-close { background: none; border: none; color: var(--muted); font-size: 16px; padding: 4px 6px; cursor: pointer; align-self: flex-start; }
 #install-btn { padding: 8px 12px; font-size: 14px; }
+
+/* ---------- Pantallas de ajustes ---------- */
+.sub-top h1 { font-size: 18px; }
+.top-spacer { width: 40px; flex: 0 0 40px; }
+.back-btn { font-size: 26px; line-height: 1; }
+.account { display: flex; align-items: center; gap: 14px; }
+.avatar {
+  width: 48px; height: 48px; border-radius: 50%; flex: 0 0 48px;
+  display: grid; place-items: center; font-size: 20px; font-weight: 700;
+  background: var(--accent); color: var(--accent-text);
+}
+.account-info { min-width: 0; }
+.account-email { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inline-form { display: flex; gap: 8px; }
+.inline-form input {
+  flex: 1; min-width: 0; font: inherit; color: var(--text); background: var(--chip);
+  border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+}
+.menu { padding: 4px 0; }
+.menu-row {
+  display: flex; width: 100%; justify-content: space-between; align-items: center;
+  font: inherit; color: var(--text); background: none; border: none; text-align: left;
+  padding: 14px 16px; cursor: pointer; border-bottom: 1px solid var(--line);
+}
+.menu-row:last-child { border-bottom: none; }
+.menu-row.hidden + .menu-row { border-top: none; }
+.chev { color: var(--muted); font-size: 22px; line-height: 1; }
+#logout { margin-top: 16px; }
+.copy-field { margin-top: 10px; }
+.copy-field label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+.copy-row { display: flex; gap: 8px; }
+.copy-row input {
+  flex: 1; min-width: 0; font: 16px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text);
+  background: var(--chip); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+}
+.copy-btn { padding: 10px 12px; font-size: 14px; }
+#regen-token { margin-top: 12px; }
+.steps ol { padding-left: 20px; margin: 8px 0 12px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
+.steps code { font-size: 13px; background: var(--chip); padding: 1px 5px; border-radius: 5px; white-space: nowrap; }
+.steps code.path { white-space: normal; overflow-wrap: anywhere; }
+.link-btn { display: block; text-align: center; text-decoration: none; margin-top: 8px; }

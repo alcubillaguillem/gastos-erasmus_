@@ -136,38 +136,75 @@
   </main>
   <div id="tooltip" class="tooltip" role="status" aria-live="polite"></div>
 
-  <!-- Ajustes -->
-  <dialog id="settings">
-    <form method="dialog" class="sheet">
-      <h2>Ajustes</h2>
-      <label class="field">Presupuesto mensual (€)
-        <input id="budget-input" type="text" inputmode="decimal" placeholder="Ej. 600">
-      </label>
-      <button type="button" id="save-budget" class="btn primary">Guardar presupuesto</button>
+  <!-- Ajustes: pantalla propia -->
+  <section id="settings-screen" class="screen hidden" aria-labelledby="settings-title">
+    <header class="top sub-top">
+      <button type="button" class="icon-btn back-btn" data-back aria-label="Volver">‹</button>
+      <h1 id="settings-title">Ajustes</h1>
+      <span class="top-spacer"></span>
+    </header>
 
-      <hr>
-      <button type="button" id="export-csv" class="btn ghost">Exportar a Excel (CSV)</button>
-
-      <div id="shortcut-box" class="hidden">
-        <hr>
-        <h3>Atajo de Siri / widget</h3>
-        <p class="small muted">Copia estos datos en el Atajo de iOS. No compartas el token con nadie.</p>
-        <label class="field">URL<input id="sc-url" readonly></label>
-        <label class="field">Clave anon<input id="sc-key" readonly></label>
-        <label class="field">Token<input id="sc-token" readonly></label>
-        <button type="button" id="regen-token" class="btn ghost">Generar token nuevo</button>
+    <section id="account-box" class="card account hidden">
+      <div class="avatar" id="account-avatar" aria-hidden="true">?</div>
+      <div class="account-info">
+        <div id="account-email" class="account-email"></div>
+        <div id="account-method" class="small muted"></div>
       </div>
+    </section>
 
-      <div id="account-box" class="hidden">
-        <hr>
-        <p id="account-email" class="small muted"></p>
-        <button type="button" id="logout" class="btn danger">Cerrar sesión</button>
+    <section class="card">
+      <h2>Presupuesto mensual</h2>
+      <div class="inline-form">
+        <input id="budget-input" type="text" inputmode="decimal" placeholder="Ej. 600 €" aria-label="Presupuesto mensual en euros">
+        <button type="button" id="save-budget" class="btn primary">Guardar</button>
       </div>
+    </section>
 
-      <hr>
-      <button value="close" class="btn">Cerrar</button>
-    </form>
-  </dialog>
+    <nav class="card menu">
+      <button type="button" id="open-shortcuts" class="menu-row hidden">
+        <span>📲 Siri y widget del iPhone</span><span class="chev">›</span>
+      </button>
+      <button type="button" id="export-csv" class="menu-row">
+        <span>📄 Exportar a Excel (CSV)</span><span class="chev">›</span>
+      </button>
+    </nav>
+
+    <button type="button" id="logout" class="btn danger wide hidden">Cerrar sesión</button>
+  </section>
+
+  <!-- Ajustes > Siri y widget -->
+  <section id="shortcuts-screen" class="screen hidden" aria-labelledby="shortcuts-title">
+    <header class="top sub-top">
+      <button type="button" class="icon-btn back-btn" data-back aria-label="Volver">‹</button>
+      <h1 id="shortcuts-title">Siri y widget</h1>
+      <span class="top-spacer"></span>
+    </header>
+
+    <section class="card">
+      <h2>Tus datos para el Atajo</h2>
+      <p class="small muted">Cópialos en el Atajo de iOS. El token es tu llave personal: no lo compartas con nadie.</p>
+      <div class="copy-field"><label for="sc-url">URL</label><div class="copy-row"><input id="sc-url" readonly><button type="button" class="btn copy-btn" data-copy="#sc-url">Copiar</button></div></div>
+      <div class="copy-field"><label for="sc-key">Clave (apikey)</label><div class="copy-row"><input id="sc-key" readonly><button type="button" class="btn copy-btn" data-copy="#sc-key">Copiar</button></div></div>
+      <div class="copy-field"><label for="sc-token">Token</label><div class="copy-row"><input id="sc-token" readonly><button type="button" class="btn copy-btn" data-copy="#sc-token">Copiar</button></div></div>
+      <button type="button" id="regen-token" class="btn ghost wide">Generar token nuevo</button>
+    </section>
+
+    <section class="card steps">
+      <h2>Cómo crear el Atajo</h2>
+      <p class="small muted">Con Siri: «Oye Siri, apunta gasto» y dices, por ejemplo, «5 euros de tabaco».</p>
+      <ol>
+        <li>Abre la app <strong>Atajos</strong> y pulsa <strong>+</strong>.</li>
+        <li>Añade <strong>Pedir entrada</strong> (Texto) con la pregunta «¿Qué has gastado?».</li>
+        <li>Añade <strong>Obtener contenido de URL</strong> con la URL de arriba terminada en <code class="path">/rest/v1/rpc/add_gasto_texto</code>, método <strong>POST</strong>.</li>
+        <li>Encabezados: <code>apikey</code> = tu clave y <code>Content-Type</code> = <code>application/json</code>.</li>
+        <li>Cuerpo JSON: <code>p_token</code> = tu token y <code>p_texto</code> = <em>Entrada proporcionada</em>.</li>
+        <li>Añade <strong>Obtener valor del diccionario</strong> (<code>mensaje</code>) y <strong>Mostrar notificación</strong>.</li>
+        <li>Llama al atajo <strong>Apunta gasto</strong>.</li>
+      </ol>
+      <p class="small muted">Para el widget: mantén pulsada la pantalla de inicio, <strong>Editar › Añadir widget › Atajos</strong> y elige el atajo.</p>
+      <a class="btn ghost wide link-btn" href="https://github.com/alcubillaguillem/gastos-erasmus_/blob/main/GUIA.md#4-atajos-de-siri-y-widget" target="_blank" rel="noopener">Guía completa (con el atajo de botones) ›</a>
+    </section>
+  </section>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
