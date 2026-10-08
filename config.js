@@ -4,4 +4,7 @@
 window.APP_CONFIG = {
   supabaseUrl: "https://oawjytdklkqhwtglfbhp.supabase.co",
   supabaseAnonKey: "sb_publishable_-KkoUIeKoPLB9m4kt-KSBg_oLF6jfmO",
+  // Enlace de iCloud del atajo «Apunta gasto» ya montado (https://www.icloud.com/shortcuts/…).
+  // Vacío = en Ajustes solo se muestran las instrucciones para crearlo a mano.
+  shortcutUrl: "",
 };

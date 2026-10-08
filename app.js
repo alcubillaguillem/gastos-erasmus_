@@ -497,14 +497,55 @@ function abrirAjustes() {
   mostrarPantalla("#settings-screen");
 }
 
+let tokenAtajo = null;
+
+async function copiarTexto(texto) {
+  try {
+    await navigator.clipboard.writeText(texto);
+    return true;
+  } catch {
+    // Plan B para navegadores sin permiso de portapapeles.
+    const ta = document.createElement("textarea");
+    ta.value = texto;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    ta.remove();
+    return ok;
+  }
+}
+
+function pintarPasosInstalacion(copiado) {
+  const copy = $("#copy-code");
+  const open = $("#open-shortcut");
+  const hayAtajo = Boolean(cfg.shortcutUrl);
+  copy.disabled = !tokenAtajo;
+  copy.textContent = !tokenAtajo ? "No se ha podido cargar tu código" : copiado ? "✓ Código copiado" : "Copiar mi código";
+  copy.classList.toggle("done", Boolean(copiado));
+  $("#istep-1").classList.toggle("is-done", Boolean(copiado));
+  $("#istep-2").classList.toggle("is-locked", !copiado);
+  open.classList.toggle("hidden", !hayAtajo);
+  $("#shortcut-missing").classList.toggle("hidden", hayAtajo);
+  open.disabled = !copiado;
+  open.textContent = copiado ? "Añadir el atajo" : "Primero copia tu código";
+}
+
 async function abrirAtajos() {
   history.pushState({ p: "atajos" }, "", "#atajos");
   mostrarPantalla("#shortcuts-screen");
   $("#sc-url").value = `${cfg.supabaseUrl}/rest/v1/rpc/add_gasto`;
   $("#sc-key").value = cfg.supabaseAnonKey;
   $("#sc-token").value = "Cargando…";
+  tokenAtajo = null;
+  pintarPasosInstalacion(false);
+  $("#copy-code").textContent = "Cargando tu código…";
   const { data, error } = await sb.rpc("mi_token_atajo");
-  $("#sc-token").value = error ? "No se ha podido obtener el token" : data;
+  tokenAtajo = error ? null : data;
+  $("#sc-token").value = tokenAtajo || "No se ha podido obtener el token";
+  pintarPasosInstalacion(false);
 }
 
 /* ---------- Acceso ---------- */
@@ -644,11 +685,29 @@ function init() {
     $("#google-btn").addEventListener("click", entrarConGoogle);
     $("#logout").addEventListener("click", cerrarSesion);
     $("#logout-top").addEventListener("click", cerrarSesion);
+    $("#copy-code").addEventListener("click", async () => {
+      if (!tokenAtajo) return;
+      const ok = await copiarTexto(tokenAtajo);
+      if (ok) {
+        pintarPasosInstalacion(true);
+        toast("Código copiado");
+      } else {
+        toast("No se ha podido copiar. Usa «¿Prefieres crearlo a mano?»");
+      }
+    });
+    $("#open-shortcut").addEventListener("click", () => {
+      if (cfg.shortcutUrl) window.location.href = cfg.shortcutUrl;
+    });
     $("#regen-token").addEventListener("click", async () => {
-      if (!confirm("El token anterior dejará de funcionar y tendrás que cambiarlo en el Atajo. ¿Seguir?")) return;
+      if (!confirm("El código anterior dejará de funcionar y tendrás que volver a instalar el atajo. ¿Seguir?")) return;
       const { data, error } = await sb.rpc("regenerar_token_atajo");
       if (error) toast("No se ha podido regenerar");
-      else { $("#sc-token").value = data; toast("Token nuevo generado"); }
+      else {
+        tokenAtajo = data;
+        $("#sc-token").value = data;
+        pintarPasosInstalacion(false);
+        toast("Código nuevo generado: vuelve a instalar el atajo");
+      }
     });
     for (const id of ["#sc-url", "#sc-key", "#sc-token"]) {
       $(id).addEventListener("focus", (e) => e.target.select());

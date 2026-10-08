@@ -53,6 +53,16 @@ La guía paso a paso está dentro de la app: **⚙︎ Ajustes › 📲 Apuntar g
 
 El atajo hace tres preguntas: **importe**, **tipo de gasto** (desplegable) e **info adicional** (opcional), y guarda el gasto llamando a `add_gasto`. Con iOS 18 o posterior se añade como botón al Centro de control.
 
+### 4b. Publicar el atajo «plantilla» (solo el administrador, una vez)
+
+Para que tus amigos lo instalen en 3 toques (copiar código, Añadir atajo, Centro de control) hace falta un atajo ya montado y compartido por iCloud:
+
+1. En tu iPhone, crea el atajo **Apunta gasto** siguiendo «¿Prefieres crearlo a mano?» en la app.
+2. En la acción **Obtener contenido de URL**, deja fijos la URL y el encabezado `apikey`. En el campo `p_token` pon la variable **Texto** de una acción **Texto** que esté arriba del todo del atajo.
+3. Abre los ajustes del atajo (ⓘ) › **Configurar** › **Pregunta de importación** › **Añadir pregunta**. Elige esa acción Texto y escribe como pregunta: *Pega aquí tu código*. Borra antes tu propio código de esa casilla.
+4. Comparte el atajo: **Compartir › Copiar enlace de iCloud**.
+5. Pega ese enlace en `config.js`, en `shortcutUrl`, y sube los cambios. Desde ese momento, en Ajustes aparece el botón **Añadir el atajo**.
+
 ## Si algo falla
 
 - **"token no válido"**: revisa que copiaste el token entero, sin espacios.

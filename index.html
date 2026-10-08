@@ -14,7 +14,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="styles.css?v=11">
+  <link rel="stylesheet" href="styles.css?v=12">
 </head>
 <body>
   <!-- Instrucciones para instalar la app (solo si se abre desde el navegador) -->
@@ -180,26 +180,47 @@
       <span class="top-spacer"></span>
     </header>
 
-    <section class="card intro">
-      <p>Vas a crear un atajo para apuntar gastos en segundos, sin abrir la app. Al tocarlo te pregunta:</p>
-      <ol class="flow">
-        <li><strong>Importe</strong> (por ejemplo, 4,50)</li>
-        <li><strong>Tipo de gasto</strong>, en un desplegable (Comida, Tabaco, Alcohol…)</li>
-        <li><strong>Info adicional</strong>, opcional (por ejemplo, «kebab con Marta»)</li>
-      </ol>
-      <p class="small muted">Lo tendrás como un botón en el <strong>Centro de control</strong>. Se tarda unos 5 minutos y solo hay que hacerlo una vez. Ten esta pantalla abierta: irás copiando datos de aquí.</p>
+    <section class="card hero-atajo">
+      <div class="hero-kicker">ATAJOS DE APPLE</div>
+      <h2 class="hero-title">Instala tu atajo en 3 pasos</h2>
+      <p class="muted">Pulsa dos botones y pega un código. Luego, desde el Centro de control, apuntarás un gasto en segundos: <strong>importe</strong>, <strong>tipo de gasto</strong> e <strong>info adicional</strong> (opcional).</p>
     </section>
 
-    <section class="card">
-      <h2>Tus 3 datos</h2>
+    <div class="install-steps">
+      <section class="card istep" id="istep-1">
+        <div class="istep-head"><span class="istep-num">1</span><div><h3>Copia tu código privado</h3><p class="small muted">Solo funciona con tu cuenta. No se lo pases a nadie.</p></div></div>
+        <button type="button" id="copy-code" class="btn primary wide big-btn" disabled>Cargando tu código…</button>
+      </section>
+
+      <section class="card istep" id="istep-2">
+        <div class="istep-head"><span class="istep-num">2</span><div><h3>Añade el atajo</h3><p class="small muted">Se abrirá la app Atajos. Toca <strong>Configurar atajo</strong>, mantén el dedo en la casilla, pulsa <strong>Pegar</strong> y luego <strong>Añadir atajo</strong>.</p></div></div>
+        <button type="button" id="open-shortcut" class="btn primary wide big-btn" disabled>Primero copia tu código</button>
+        <p id="shortcut-missing" class="small muted hidden">⏳ El atajo listo para instalar todavía no está publicado. Mientras tanto puedes crearlo a mano (abajo).</p>
+      </section>
+
+      <section class="card istep" id="istep-3">
+        <div class="istep-head"><span class="istep-num">3</span><div><h3>Ponlo en el Centro de control</h3><p class="small muted">Necesitas iOS 18 o posterior.</p></div></div>
+        <ol class="mini-steps">
+          <li>Desliza hacia abajo desde la esquina superior derecha.</li>
+          <li>Toca <strong>+</strong> arriba a la izquierda y luego <strong>Añadir un control</strong>.</li>
+          <li>Busca <strong>Atajos</strong>, elige <strong>Atajo</strong> y selecciona <strong>Apunta gasto</strong>.</li>
+        </ol>
+        <p class="check">✅ Ya está. Toca <strong>Apunta gasto</strong> en el Centro de control y responde las preguntas.</p>
+      </section>
+    </div>
+
+    <details class="card manual">
+      <summary>¿Prefieres crearlo a mano?</summary>
+    <div class="manual-block">
+      <h3>Tus 3 datos</h3>
       <p class="small muted">El token es tu llave personal: no se lo pases a nadie.</p>
       <div class="copy-field"><label for="sc-url">① Dirección</label><div class="copy-row"><input id="sc-url" readonly><button type="button" class="btn copy-btn" data-copy="#sc-url">Copiar</button></div></div>
       <div class="copy-field"><label for="sc-key">② Clave</label><div class="copy-row"><input id="sc-key" readonly><button type="button" class="btn copy-btn" data-copy="#sc-key">Copiar</button></div></div>
       <div class="copy-field"><label for="sc-token">③ Token</label><div class="copy-row"><input id="sc-token" readonly><button type="button" class="btn copy-btn" data-copy="#sc-token">Copiar</button></div></div>
-    </section>
+    </div>
 
-    <section class="card steps">
-      <h2>Paso 1 · Crear el atajo</h2>
+    <div class="manual-block steps">
+      <h3>Crear el atajo</h3>
       <p class="small muted">Para añadir cada acción, escribe en la barra <strong>«Buscar acciones»</strong> la palabra que pone junto a 🔍 y toca la acción. Según la versión de iOS el nombre puede variar un poco; si tienes dudas, mándame captura. Las acciones se van poniendo una debajo de otra.</p>
       <ol>
         <li>Abre la app <strong>Atajos</strong> (viene en el iPhone) y toca <strong>+</strong> arriba a la derecha.</li>
@@ -256,41 +277,26 @@
         <li>Toca <strong>OK</strong> arriba a la derecha.</li>
       </ol>
       <p class="check">✅ <strong>Pruébalo:</strong> toca el atajo, pon <em>1</em>, elige <em>Otros</em> y escribe <em>prueba</em>. Te saldrá «Apuntado: 1,00 € en Otros» y lo verás en la app (luego lo puedes borrar).</p>
-    </section>
-
-    <section class="card steps">
-      <h2>Paso 2 · Ponerlo en el Centro de control</h2>
-      <p class="small muted">Necesitas iOS 18 o posterior.</p>
-      <ol>
-        <li>Desliza hacia abajo desde la esquina superior derecha para abrir el <strong>Centro de control</strong>.</li>
-        <li>Toca el <strong>+</strong> de arriba a la izquierda (o mantén el dedo en un hueco vacío).</li>
-        <li>Toca <strong>Añadir un control</strong> abajo, busca <strong>Atajos</strong> y elige <strong>Atajo</strong>.</li>
-        <li>Toca el control nuevo y elige <strong>Apunta gasto</strong>. Puedes arrastrarlo donde quieras.</li>
-        <li>Toca un hueco vacío para terminar.</li>
-      </ol>
-      <p class="check">✅ Ya está. Abre el Centro de control, toca <strong>Apunta gasto</strong> y responde las tres preguntas.</p>
-    </section>
+    </div>
+    </details>
 
     <section class="card steps">
       <h2>¿Algo no funciona?</h2>
       <ul class="plain small">
-        <li><strong>«token no válido»:</strong> vuelve a copiar y pegar el ③ Token.</li>
-        <li><strong>Error 401 o «No API key»:</strong> revisa el encabezado <code>apikey</code>.</li>
-        <li><strong>Error 404:</strong> la ① Dirección no está entera; cópiala de nuevo.</li>
-        <li><strong>Todo sale en Otros:</strong> revisa que en la <em>Lista</em> los nombres estén escritos tal cual, sin emojis.</li>
-        <li><strong>La notificación sale vacía:</strong> en <em>Obtener valor del diccionario</em> la clave debe ser exactamente <code>mensaje</code>.</li>
+        <li><strong>«token no válido»:</strong> vuelve al paso 1, copia el código y pégalo de nuevo en el atajo (Atajos › mantén pulsado el atajo › Detalles).</li>
+        <li><strong>No pasa nada al tocar «Añadir atajo»:</strong> ábrelo desde Safari en lugar de desde la app instalada.</li>
+        <li><strong>No encuentro el control:</strong> el Centro de control con controles de atajos llega con iOS 18. Comprueba tu versión en Ajustes › General › Información.</li>
       </ul>
-      <button type="button" id="regen-token" class="btn ghost wide">Generar token nuevo</button>
-      <p class="small muted">Úsalo solo si crees que alguien tiene tu token. Después tendrás que pegar el nuevo en el atajo.</p>
+      <button type="button" id="regen-token" class="btn ghost wide">Generar código nuevo</button>
+      <p class="small muted">Úsalo solo si crees que alguien tiene tu código. Después tendrás que volver a instalar el atajo.</p>
     </section>
-  </section>
   </section>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="config.js?v=11"></script>
+  <script src="config.js?v=12"></script>
   <script src="vendor/supabase-js-2.117.3.js"></script>
-  <script src="charts.js?v=11"></script>
-  <script src="app.js?v=11"></script>
+  <script src="charts.js?v=12"></script>
+  <script src="app.js?v=12"></script>
 </body>
 </html>
