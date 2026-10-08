@@ -500,7 +500,7 @@ function abrirAjustes() {
 async function abrirAtajos() {
   history.pushState({ p: "atajos" }, "", "#atajos");
   mostrarPantalla("#shortcuts-screen");
-  $("#sc-url").value = cfg.supabaseUrl;
+  $("#sc-url").value = `${cfg.supabaseUrl}/rest/v1/rpc/add_gasto_texto`;
   $("#sc-key").value = cfg.supabaseAnonKey;
   $("#sc-token").value = "Cargando…";
   const { data, error } = await sb.rpc("mi_token_atajo");

@@ -238,3 +238,10 @@ dialog::backdrop { background: rgba(0,0,0,.45); }
 .steps code { font-size: 13px; background: var(--chip); padding: 1px 5px; border-radius: 5px; white-space: nowrap; }
 .steps code.path { white-space: normal; overflow-wrap: anywhere; }
 .link-btn { display: block; text-align: center; text-decoration: none; margin-top: 8px; }
+
+.intro p { margin: 0 0 8px; }
+ul.plain { list-style: none; padding: 0; margin: 8px 0; display: flex; flex-direction: column; gap: 6px; }
+.steps ol > li { padding-left: 2px; }
+.steps ul.sub { margin: 6px 0 2px; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+.steps .check { background: var(--chip); border-radius: 10px; padding: 10px 12px; margin: 4px 0 0; font-size: 14px; }
+.steps p { margin: 0 0 8px; }

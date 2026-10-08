@@ -49,7 +49,9 @@ Son 4 pasos. Solo hay que hacerlos una vez.
 
 ## 4. Atajos de Siri y widget
 
-Abre la app web, ve a **⚙︎ Ajustes** y copia la **URL**, la **Clave anon** y el **Token**. El token es tu llave personal: no lo compartas.
+Abre la app web, ve a **⚙︎ Ajustes › 📲 Siri y widget del iPhone** y copia la **① Dirección**, la **② Clave** y el **③ Token**. El token es tu llave personal: no lo compartas.
+
+> **Lo más fácil:** en la app, ve a **⚙︎ Ajustes › 📲 Siri y widget del iPhone**. Ahí tienes tus datos con botones para copiarlos y los pasos explicados uno a uno. Lo de abajo es lo mismo con más detalle, más un segundo atajo con botones.
 
 ### Atajo A: "Apunta gasto" (para Siri, todo de una vez)
 
@@ -59,11 +61,11 @@ En la app **Atajos**, pulsa **+** y añade estas acciones en orden:
 
 1. **Pedir entrada**: tipo *Texto*, pregunta `¿Qué has gastado?`
 2. **Obtener contenido de URL**:
-   - URL: `TU_URL/rest/v1/rpc/add_gasto_texto` (por ejemplo `https://abcdxyz.supabase.co/rest/v1/rpc/add_gasto_texto`)
+   - URL: la **① Dirección** tal cual (ya termina en `/rest/v1/rpc/add_gasto_texto`)
    - Pulsa la flecha para ver más opciones. **Método:** `POST`
-   - **Encabezados:** `apikey` = *tu clave anon*, y `Content-Type` = `application/json`
+   - **Encabezados:** `apikey` = *tu ② Clave*
    - **Cuerpo de solicitud:** *JSON*, con dos campos de texto:
-     - `p_token` = *tu token*
+     - `p_token` = *tu ③ Token*
      - `p_texto` = variable **Entrada proporcionada**
 3. **Obtener valor del diccionario**: clave `mensaje`
 4. **Mostrar notificación**: *Valor del diccionario*
@@ -77,8 +79,8 @@ La categoría se adivina por las palabras: *tabaco, cigarros* → Tabaco; *cerve
 1. **Pedir entrada**: tipo *Número*, pregunta `¿Cuánto?`
 2. **Elegir de la lista**: escribe la lista `Comida, Tabaco, Alcohol, Ocio, Viajes, Transporte, Casa, Compras, Estudios, Otros`
 3. **Obtener contenido de URL**: igual que en el atajo A, pero:
-   - URL: `TU_URL/rest/v1/rpc/add_gasto`
-   - Cuerpo JSON: `p_token` = *tu token* (texto), `p_importe` = **Entrada proporcionada** (tipo *Número*), `p_categoria` = **Elemento elegido** (texto)
+   - URL: la **① Dirección** quitando `_texto` del final (tiene que terminar en `/rest/v1/rpc/add_gasto`)
+   - Cuerpo JSON: `p_token` = *tu ③ Token* (texto), `p_importe` = **Entrada proporcionada** (tipo *Número*), `p_categoria` = **Elemento elegido** (texto)
 4. **Obtener valor del diccionario**: `mensaje`
 5. **Mostrar notificación**: *Valor del diccionario*
 
