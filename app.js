@@ -9,28 +9,57 @@ window.addEventListener("error", (e) => {
   setTimeout(() => t.classList.remove("show"), 6000);
 });
 
+// Iconos de línea (24×24) y color de cada categoría en las barras y la leyenda.
 const CATEGORIAS = [
-  { id: "comida", nombre: "Comida", emoji: "🍝" },
-  { id: "tabaco", nombre: "Tabaco", emoji: "🚬" },
-  { id: "alcohol", nombre: "Alcohol", emoji: "🍺" },
-  { id: "ocio", nombre: "Ocio", emoji: "🎉" },
-  { id: "viajes", nombre: "Viajes", emoji: "✈️" },
-  { id: "transporte", nombre: "Transporte", emoji: "🚌" },
-  { id: "casa", nombre: "Casa", emoji: "🏠" },
-  { id: "compras", nombre: "Compras", emoji: "🛍️" },
-  { id: "estudios", nombre: "Estudios", emoji: "📚" },
-  { id: "otros", nombre: "Otros", emoji: "📦" },
+  { id: "comida", nombre: "Comida", color: "#7dd3fc", icono: "M7 3v8M5 3v4a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 1-3 3-3 6v3h3v9" },
+  { id: "tabaco", nombre: "Tabaco", color: "#fdba74", icono: "M3 14h14v4H3zM20 14v4M17 10c0-2 3-2 3-4.5" },
+  { id: "alcohol", nombre: "Alcohol", color: "#f9a8d4", icono: "M8 3h8l-1 8a3 3 0 0 1-6 0zM12 14v7M9 21h6" },
+  { id: "ocio", nombre: "Ocio", color: "#c4b5fd", icono: "M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" },
+  { id: "viajes", nombre: "Viajes", color: "#c5f04a", icono: "M22 2 11 13M22 2l-7 20-4-9-9-4z" },
+  { id: "transporte", nombre: "Transporte", color: "#d4d4d8", icono: "M7 3h10a2 2 0 0 1 2 2v13H5V5a2 2 0 0 1 2-2zM5 11h14M8 18v3M16 18v3" },
+  { id: "casa", nombre: "Casa", color: "#fde68a", icono: "M4 11 12 4l8 7v9h-5v-6H9v6H4z" },
+  { id: "compras", nombre: "Compras", color: "#86efac", icono: "M6 8h12l-1 13H7zM9 8V6a3 3 0 0 1 6 0v2" },
+  { id: "estudios", nombre: "Estudios", color: "#93c5fd", icono: "M4 19V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2zM8 7h8" },
+  { id: "otros", nombre: "Otros", color: "#a1a1aa", icono: "M6 12h.01M12 12h.01M18 12h.01" },
 ];
 const CAT = Object.fromEntries(CATEGORIAS.map((c) => [c.id, c]));
 const catInfo = (id) => CAT[id] || CAT.otros;
+const icono = (d, extra = "") => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"${extra}><path d="${d}"/></svg>`;
+const ICONO_X = "M6 6l12 12M18 6 6 18";
 
 const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
 const euro = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" });
 const fmt = (n) => euro.format(Number(n) || 0);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const sum = (arr) => arr.reduce((s, g) => s + Number(g.importe), 0);
+
+// "486,20 €" con los céntimos en gris, como en el diseño.
+function fmtGrande(n) {
+  const t = fmt(n);
+  const i = t.lastIndexOf(",");
+  return i < 0 ? esc(t) : `${esc(t.slice(0, i))}<span>${esc(t.slice(i))}</span>`;
+}
 
 function isoDate(d) {
   const p = (n) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+const hoyISO = () => isoDate(new Date());
+function parseISO(s) {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+// Días entre dos fechas ISO, contando las dos (9 y 12 → 4).
+function diasEntre(a, b) {
+  return Math.round((parseISO(b) - parseISO(a)) / 86400000) + 1;
+}
+function rangoTexto(inicio, fin) {
+  const a = parseISO(inicio), b = parseISO(fin);
+  const mes = (d) => d.toLocaleDateString("es-ES", { month: "short" }).replace(".", "");
+  if (inicio === fin) return `${a.getDate()} ${mes(a)}`;
+  if (a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()) return `${a.getDate()}–${b.getDate()} ${mes(b)}`;
+  return `${a.getDate()} ${mes(a)} – ${b.getDate()} ${mes(b)}`;
 }
 function parseAmount(str) {
   const clean = String(str).trim().replace(/\s|€/g, "").replace(/\.(?=\d{3}(\D|$))/g, "").replace(",", ".");
@@ -45,11 +74,17 @@ function monthRange(year, month) {
 function safeStorage(fn, fallback) {
   try { return fn(); } catch { return fallback; }
 }
+function porCategoria(gastos) {
+  const m = {};
+  for (const g of gastos) m[g.categoria] = (m[g.categoria] || 0) + Number(g.importe);
+  return Object.entries(m).sort((a, b) => b[1] - a[1]);
+}
+const esEscritorio = () => window.matchMedia("(min-width: 900px)").matches;
 
 /* ---------- Almacenes de datos ---------- */
 
 class LocalStore {
-  constructor() { this.key = "gastos-erasmus:gastos"; }
+  constructor() { this.key = "gastos-erasmus:gastos"; this.keyViajes = "gastos-erasmus:viajes"; }
   all() { return safeStorage(() => JSON.parse(localStorage.getItem(this.key)) || [], []); }
   save(list) { safeStorage(() => localStorage.setItem(this.key, JSON.stringify(list))); }
   async listMonth(from, to) {
@@ -64,6 +99,21 @@ class LocalStore {
   async remove(id) { this.save(this.all().filter((g) => g.id !== id)); }
   async getBudget() { return safeStorage(() => Number(localStorage.getItem("gastos-erasmus:presupuesto")) || 0, 0); }
   async setBudget(v) { safeStorage(() => localStorage.setItem("gastos-erasmus:presupuesto", String(v))); }
+
+  viajesAll() { return safeStorage(() => JSON.parse(localStorage.getItem(this.keyViajes)) || [], []); }
+  viajesSave(list) { safeStorage(() => localStorage.setItem(this.keyViajes, JSON.stringify(list))); }
+  async listViajes() { return this.viajesAll().sort((a, b) => b.inicio.localeCompare(a.inicio)); }
+  async addViaje(v) {
+    const item = { excluidos: [], ...v, id: crypto.randomUUID(), created_at: new Date().toISOString() };
+    this.viajesSave([...this.viajesAll(), item]);
+    return item;
+  }
+  async updateViaje(id, patch) {
+    const list = this.viajesAll().map((v) => (v.id === id ? { ...v, ...patch } : v));
+    this.viajesSave(list);
+    return list.find((v) => v.id === id);
+  }
+  async removeViaje(id) { this.viajesSave(this.viajesAll().filter((v) => v.id !== id)); }
 }
 
 class SupabaseStore {
@@ -97,6 +147,25 @@ class SupabaseStore {
     const { error } = await this.sb.auth.updateUser({ data: { presupuesto: v } });
     if (error) throw error;
   }
+  async listViajes() {
+    const { data, error } = await this.sb.from("viajes").select("*").order("inicio", { ascending: false });
+    if (error) throw error;
+    return data;
+  }
+  async addViaje(v) {
+    const { data, error } = await this.sb.from("viajes").insert(v).select().single();
+    if (error) throw error;
+    return data;
+  }
+  async updateViaje(id, patch) {
+    const { data, error } = await this.sb.from("viajes").update(patch).eq("id", id).select().single();
+    if (error) throw error;
+    return data;
+  }
+  async removeViaje(id) {
+    const { error } = await this.sb.from("viajes").delete().eq("id", id);
+    if (error) throw error;
+  }
 }
 
 /* ---------- Estado ---------- */
@@ -118,17 +187,54 @@ const sb = remote
     })
   : null;
 
+const VISTAS = ["inicio", "viajes", "graficos", "ajustes"];
+const vistaGuardada = safeStorage(() => localStorage.getItem("gastos-erasmus:vista"), null);
+
 const state = {
   store: remote ? new SupabaseStore(sb) : new LocalStore(),
   year: new Date().getFullYear(),
   month: new Date().getMonth(),
   categoria: safeStorage(() => localStorage.getItem("gastos-erasmus:ultima-cat"), null) || "comida",
-  gastos: [],   // gastos del mes seleccionado
-  rango: [],    // gastos de los últimos 6 meses (para los gráficos)
-  vista: safeStorage(() => localStorage.getItem("gastos-erasmus:vista"), null) || "gastos",
+  gastos: [],        // gastos del mes seleccionado
+  rango: [],         // gastos de los últimos 6 meses (para los gráficos)
+  viajes: [],        // viajes, del más reciente al más antiguo
+  gastosViaje: [],   // gastos entre la ida del primer viaje y la vuelta del último
+  viajeSel: null,    // id del viaje abierto en la pestaña Viajes
+  viajeEdit: null,   // viaje que se está editando en la hoja
+  vista: VISTAS.includes(vistaGuardada) ? vistaGuardada : "inicio",
   presupuesto: 0,
   user: null,
 };
+
+/* ---------- Viajes: qué gastos cuentan ---------- */
+
+// Un gasto es de un viaje si su fecha cae entre la ida y la vuelta y no se ha quitado a mano.
+function viajeDe(g) {
+  return state.viajes.find((v) => g.fecha >= v.inicio && g.fecha <= v.fin && !(v.excluidos || []).includes(g.id)) || null;
+}
+function enFechas(v, g) { return g.fecha >= v.inicio && g.fecha <= v.fin; }
+function gastosDe(v) {
+  return state.gastosViaje.filter((g) => enFechas(v, g) && !(v.excluidos || []).includes(g.id) && viajeDe(g)?.id === v.id);
+}
+function viajeEnCurso() {
+  const hoy = hoyISO();
+  return state.viajes.find((v) => v.inicio <= hoy && hoy <= v.fin) || null;
+}
+// Días que cuentan para la media: los ya vividos si el viaje está en curso.
+function diasViaje(v) {
+  const hoy = hoyISO();
+  const dias = diasEntre(v.inicio, v.fin);
+  if (hoy < v.inicio) return { dias, vividos: 0, estado: "futuro" };
+  if (hoy > v.fin) return { dias, vividos: dias, estado: "pasado" };
+  return { dias, vividos: diasEntre(v.inicio, hoy), estado: "en-curso" };
+}
+function statsViaje(v) {
+  const gastos = gastosDe(v);
+  const total = sum(gastos);
+  const d = diasViaje(v);
+  const base = d.vividos || d.dias;
+  return { gastos, total, ...d, porDia: base ? total / base : 0 };
+}
 
 /* ---------- UI ---------- */
 
@@ -150,7 +256,7 @@ function renderCategoryPicker() {
     b.className = "cat";
     b.setAttribute("role", "radio");
     b.setAttribute("aria-checked", String(c.id === state.categoria));
-    b.innerHTML = `<span class="emoji">${c.emoji}</span><span>${c.nombre}</span>`;
+    b.innerHTML = `${icono(c.icono, ` style="color:${c.color}"`)}<span>${c.nombre}</span>`;
     b.addEventListener("click", () => {
       state.categoria = c.id;
       safeStorage(() => localStorage.setItem("gastos-erasmus:ultima-cat", c.id));
@@ -161,87 +267,156 @@ function renderCategoryPicker() {
   }
 }
 
+function pintarStack(el, filas, total) {
+  el.innerHTML = filas.map(([id, v]) =>
+    `<span style="flex:${(v / total) * 100};background:${catInfo(id).color}"></span>`).join("");
+}
+
+// Cifras del mes seleccionado: las usan Inicio y Gráficos.
+function calcMes() {
+  const { year, month } = state;
+  const hoy = new Date();
+  const esMesActual = hoy.getFullYear() === year && hoy.getMonth() === month;
+  const esFuturo = new Date(year, month, 1) > hoy;
+  const diasMes = new Date(year, month + 1, 0).getDate();
+  const diasTranscurridos = esMesActual ? hoy.getDate() : esFuturo ? 0 : diasMes;
+  const total = sum(state.gastos);
+  const mediaDia = diasTranscurridos ? total / diasTranscurridos : 0;
+  const ant = new Date(year, month - 1, 1);
+  const [af, at] = monthRange(ant.getFullYear(), ant.getMonth());
+  const totalAnterior = sum(state.rango.filter((g) => g.fecha >= af && g.fecha <= at));
+  const nombreAnterior = ant.toLocaleDateString("es-ES", { month: "long" });
+  return { esMesActual, esFuturo, diasMes, diasTranscurridos, total, mediaDia, prevision: mediaDia * diasMes, totalAnterior, nombreAnterior };
+}
+
+function itemGasto(g, { conViaje = true, accion = null } = {}) {
+  const c = catInfo(g.categoria);
+  const v = conViaje ? viajeDe(g) : null;
+  const el = document.createElement("div");
+  el.className = "item";
+  el.innerHTML = `
+    <span class="cat-ic" style="color:${c.color}">${icono(c.icono)}</span>
+    <div class="info"><div class="note"></div><div class="meta"></div></div>
+    <span class="amt">−${esc(fmt(g.importe).replace(/\s?€$/, ""))}</span>`;
+  el.querySelector(".note").textContent = g.nota || c.nombre;
+  const meta = el.querySelector(".meta");
+  meta.textContent = g.nota ? c.nombre : "";
+  if (v) {
+    if (g.nota) meta.append(" · ");
+    const s = document.createElement("span");
+    s.className = "trip";
+    s.textContent = v.nombre;
+    meta.append(s);
+  }
+  if (accion) el.appendChild(accion);
+  else {
+    const del = document.createElement("button");
+    del.className = "del";
+    del.setAttribute("aria-label", "Borrar gasto");
+    del.innerHTML = icono(ICONO_X);
+    del.addEventListener("click", () => borrar(g));
+    el.appendChild(del);
+  }
+  return el;
+}
+
 function render() {
   const label = new Date(state.year, state.month, 1)
-    .toLocaleDateString("es-ES", { month: "long", year: "numeric" });
-  $("#month-label").textContent = label.charAt(0).toUpperCase() + label.slice(1);
+    .toLocaleDateString("es-ES", { month: "long", year: "numeric" }).replace(" de ", " ");
+  $$(".month-label").forEach((h) => { h.textContent = label.charAt(0).toUpperCase() + label.slice(1); });
 
-  const total = state.gastos.reduce((s, g) => s + Number(g.importe), 0);
-  const hoy = isoDate(new Date());
-  const totalHoy = state.gastos.filter((g) => g.fecha === hoy).reduce((s, g) => s + Number(g.importe), 0);
-  $("#month-total").textContent = fmt(total);
-  $("#today-total").textContent = fmt(totalHoy);
+  const m = calcMes();
+  $("#month-total").innerHTML = fmtGrande(m.total);
 
   // Presupuesto
   const box = $("#budget-box");
+  const left = $("#budget-left");
   if (state.presupuesto > 0) {
     box.classList.remove("hidden");
-    const pct = (total / state.presupuesto) * 100;
+    const pct = (m.total / state.presupuesto) * 100;
     const fill = $("#budget-fill");
     fill.style.width = `${Math.min(pct, 100)}%`;
     fill.classList.toggle("warn", pct >= 80 && pct < 100);
     fill.classList.toggle("over", pct >= 100);
-    const resto = state.presupuesto - total;
-    $("#budget-text").textContent = resto >= 0
-      ? `Te quedan ${fmt(resto)} de ${fmt(state.presupuesto)} (${Math.round(pct)} %)`
-      : `Te has pasado ${fmt(-resto)} del presupuesto de ${fmt(state.presupuesto)}`;
+    const resto = state.presupuesto - m.total;
+    $("#budget-text").textContent = `${Math.round(pct)} % del presupuesto de ${fmt(state.presupuesto)}`;
+    left.innerHTML = resto >= 0
+      ? `Quedan <strong>${esc(fmt(resto))}</strong> de ${esc(fmt(state.presupuesto))}`
+      : `Te has pasado <strong class="over">${esc(fmt(-resto))}</strong>`;
   } else {
     box.classList.add("hidden");
+    left.textContent = "";
   }
 
-  $("#mode-badge").textContent = remote
-    ? ""
-    : "Modo local: los gastos se guardan solo en este dispositivo.";
+  $("#mode-badge").textContent = remote ? "" : "Modo local: los gastos se guardan solo en este dispositivo.";
 
-  // Desglose por categoría
-  const porCat = {};
-  for (const g of state.gastos) porCat[g.categoria] = (porCat[g.categoria] || 0) + Number(g.importe);
-  const filas = Object.entries(porCat).sort((a, b) => b[1] - a[1]);
-  const bd = $("#breakdown");
-  bd.innerHTML = filas.length ? "" : `<div class="empty">Aún no hay gastos este mes</div>`;
-  for (const [id, importe] of filas) {
+  // Reparto por categoría
+  const filas = porCategoria(state.gastos);
+  pintarStack($("#cat-stack"), filas, m.total);
+  $("#cat-legend").innerHTML = filas.map(([id, v]) => {
     const c = catInfo(id);
-    const pct = total ? (importe / total) * 100 : 0;
-    const row = document.createElement("div");
-    row.className = "row";
-    row.innerHTML = `
-      <div class="row-top"><span>${c.emoji} ${c.nombre} <span class="muted small">${Math.round(pct)} %</span></span>
-      <span class="amt">${fmt(importe)}</span></div>
-      <div class="bar"><div class="fill" style="width:${pct}%"></div></div>`;
-    bd.appendChild(row);
+    return `<div class="legend-row"><span class="dot" style="background:${c.color}"></span><span class="name">${c.nombre}</span><span>${esc(fmt(v))}</span></div>`;
+  }).join("");
+
+  // Datos rápidos
+  const hoy = hoyISO();
+  $("#i-hoy").textContent = m.esMesActual ? fmt(sum(state.gastos.filter((g) => g.fecha === hoy))) : "—";
+  $("#i-media").textContent = m.diasTranscurridos ? fmt(m.mediaDia) : "—";
+  $("#i-media-sub").textContent = m.diasTranscurridos ? `${m.diasTranscurridos} de ${m.diasMes} días` : "";
+  const prevSub = $("#i-prev-sub");
+  prevSub.classList.remove("warn");
+  if (m.esMesActual) {
+    $("#i-prev").textContent = fmt(m.prevision);
+    if (state.presupuesto > 0 && m.prevision > state.presupuesto) {
+      prevSub.textContent = `${fmt(m.prevision - state.presupuesto)} por encima`;
+      prevSub.classList.add("warn");
+    } else prevSub.textContent = state.presupuesto > 0 ? "dentro del presupuesto" : "a este ritmo";
+  } else {
+    $("#i-prev").textContent = m.esFuturo ? "—" : fmt(m.total);
+    prevSub.textContent = m.esFuturo ? "" : "mes cerrado";
+  }
+  if (m.totalAnterior > 0) {
+    const pct = Math.round(((m.total - m.totalAnterior) / m.totalAnterior) * 100);
+    $("#i-vs").textContent = `${pct > 0 ? "+" : pct < 0 ? "−" : ""}${Math.abs(pct)} %`;
+    $("#i-vs-sub").textContent = `${fmt(m.totalAnterior)} en ${m.nombreAnterior}`;
+  } else {
+    $("#i-vs").textContent = "—";
+    $("#i-vs-sub").textContent = "";
   }
 
-  // Lista agrupada por día
+  // Viaje en curso
+  const vc = viajeEnCurso();
+  const tn = $("#trip-now");
+  tn.classList.toggle("hidden", !vc);
+  if (vc) {
+    const s = statsViaje(vc);
+    tn.innerHTML = `
+      <span class="live">Viaje en curso · día ${s.vividos} de ${s.dias}</span>
+      <span class="trip-row"><span><span class="trip-name">${esc(vc.nombre)}</span><br>
+      <span class="small muted">${esc(rangoTexto(vc.inicio, vc.fin))} · ${esc(fmt(s.porDia))}/día</span></span>
+      <span class="trip-total">${esc(fmt(s.total))}</span></span>`;
+    tn.onclick = () => { state.viajeSel = vc.id; cambiarVista("viajes"); };
+  }
+
+  // Movimientos agrupados por día
   const list = $("#list");
-  list.innerHTML = state.gastos.length ? "" : `<div class="empty">Sin movimientos</div>`;
+  list.innerHTML = state.gastos.length ? "" : `<div class="empty">Aún no hay gastos este mes</div>`;
   const porDia = new Map();
   for (const g of state.gastos) {
     if (!porDia.has(g.fecha)) porDia.set(g.fecha, []);
     porDia.get(g.fecha).push(g);
   }
-  const dias = [...porDia.keys()].sort().reverse();
-  for (const dia of dias) {
+  const ayer = isoDate(new Date(Date.now() - 86400000));
+  for (const dia of [...porDia.keys()].sort().reverse()) {
     const items = porDia.get(dia).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
-    const sumDia = items.reduce((s, g) => s + Number(g.importe), 0);
-    const [y, m, d] = dia.split("-").map(Number);
     const head = document.createElement("div");
     head.className = "day";
-    head.innerHTML = `<span>${new Date(y, m - 1, d).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "short" })}</span><span>${fmt(sumDia)}</span>`;
+    const nombre = dia === hoy ? "Hoy" : dia === ayer ? "Ayer"
+      : parseISO(dia).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "short" });
+    head.innerHTML = `<span></span><span>${esc(fmt(sum(items)))}</span>`;
+    head.firstChild.textContent = nombre;
     list.appendChild(head);
-    for (const g of items) {
-      const c = catInfo(g.categoria);
-      const el = document.createElement("div");
-      el.className = "item";
-      el.innerHTML = `
-        <span class="emoji">${c.emoji}</span>
-        <div class="info"><div class="cat-name"></div><div class="note"></div></div>
-        <span class="amt">${fmt(g.importe)}</span>
-        <button class="del" aria-label="Borrar">✕</button>`;
-      el.querySelector(".cat-name").textContent = c.nombre;
-      el.querySelector(".note").textContent = g.nota || "";
-      el.querySelector(".del").addEventListener("click", () => borrar(g));
-      list.appendChild(el);
-    }
+    for (const g of items) list.appendChild(itemGasto(g));
   }
 }
 
@@ -261,6 +436,7 @@ function aplicarRango() {
 function pintar() {
   render();
   if (state.vista === "graficos") renderDashboard();
+  if (state.vista === "viajes") renderViajes();
 }
 
 async function cargar() {
@@ -275,17 +451,29 @@ async function cargar() {
   pintar();
 }
 
+async function cargarViajes() {
+  try {
+    state.viajes = await state.store.listViajes();
+    if (state.viajes.length) {
+      const from = state.viajes.reduce((m, v) => (v.inicio < m ? v.inicio : m), state.viajes[0].inicio);
+      const to = state.viajes.reduce((m, v) => (v.fin > m ? v.fin : m), state.viajes[0].fin);
+      state.gastosViaje = await state.store.listMonth(from, to);
+    } else {
+      state.gastosViaje = [];
+    }
+  } catch (e) {
+    console.error(e);
+    toast("No se han podido cargar los viajes");
+  }
+  pintar();
+}
+
 /* ---------- Dashboard de gráficos ---------- */
 
 function renderDashboard() {
   const { year, month } = state;
-  const hoy = new Date();
-  const esMesActual = hoy.getFullYear() === year && hoy.getMonth() === month;
-  const esFuturo = new Date(year, month, 1) > hoy;
-  const diasMes = new Date(year, month + 1, 0).getDate();
-  const diasTranscurridos = esMesActual ? hoy.getDate() : esFuturo ? 0 : diasMes;
-  const sum = (arr) => arr.reduce((s, g) => s + Number(g.importe), 0);
   const nombreMes = (y, m, opts) => new Date(y, m, 1).toLocaleDateString("es-ES", opts);
+  const m = calcMes();
 
   // Totales de los últimos meses
   const meses = [];
@@ -300,40 +488,32 @@ function renderDashboard() {
       selected: i === 0,
     });
   }
-  const anteriores = meses.slice(0, -1).filter((m) => m.value > 0);
-  const media = anteriores.length ? anteriores.reduce((s, m) => s + m.value, 0) / anteriores.length : 0;
-
-  const total = sum(state.gastos);
-  const anterior = meses[meses.length - 2];
+  const anteriores = meses.slice(0, -1).filter((x) => x.value > 0);
+  const media = anteriores.length ? anteriores.reduce((s, x) => s + x.value, 0) / anteriores.length : 0;
 
   // KPIs
-  $("#k-total").textContent = fmt(total);
-  if (anterior.value > 0) {
-    const pct = Math.round(((total - anterior.value) / anterior.value) * 100);
-    $("#k-vs").textContent = `${pct > 0 ? "+" : ""}${pct} % vs ${anterior.fullLabel.split(" ")[0]}`;
+  $("#k-total").textContent = fmt(m.total);
+  if (m.totalAnterior > 0) {
+    const pct = Math.round(((m.total - m.totalAnterior) / m.totalAnterior) * 100);
+    $("#k-vs").textContent = `${pct > 0 ? "+" : ""}${pct} % vs ${m.nombreAnterior}`;
   } else {
     $("#k-vs").textContent = "";
   }
-  const mediaDia = diasTranscurridos ? total / diasTranscurridos : 0;
-  $("#k-media").textContent = diasTranscurridos ? fmt(mediaDia) : "—";
-  $("#k-dias").textContent = diasTranscurridos ? `${diasTranscurridos} de ${diasMes} días` : "";
-  if (esMesActual) {
-    const prevision = mediaDia * diasMes;
-    $("#k-prev").textContent = fmt(prevision);
+  $("#k-media").textContent = m.diasTranscurridos ? fmt(m.mediaDia) : "—";
+  $("#k-dias").textContent = m.diasTranscurridos ? `${m.diasTranscurridos} de ${m.diasMes} días` : "";
+  if (m.esMesActual) {
+    $("#k-prev").textContent = fmt(m.prevision);
     $("#k-prev-sub").textContent = state.presupuesto > 0
-      ? (prevision > state.presupuesto ? `${fmt(prevision - state.presupuesto)} por encima del presupuesto` : "dentro del presupuesto")
+      ? (m.prevision > state.presupuesto ? `${fmt(m.prevision - state.presupuesto)} por encima del presupuesto` : "dentro del presupuesto")
       : "a este ritmo";
   } else {
-    $("#k-prev").textContent = esFuturo ? "—" : fmt(total);
-    $("#k-prev-sub").textContent = esFuturo ? "" : "mes cerrado";
+    $("#k-prev").textContent = m.esFuturo ? "—" : fmt(m.total);
+    $("#k-prev-sub").textContent = m.esFuturo ? "" : "mes cerrado";
   }
-  const porCat = {};
-  for (const g of state.gastos) porCat[g.categoria] = (porCat[g.categoria] || 0) + Number(g.importe);
-  const filas = Object.entries(porCat).sort((a, b) => b[1] - a[1]);
+  const filas = porCategoria(state.gastos);
   if (filas.length) {
-    const c = catInfo(filas[0][0]);
-    $("#k-top").textContent = `${c.emoji} ${c.nombre}`;
-    $("#k-top-sub").textContent = `${fmt(filas[0][1])} · ${Math.round((filas[0][1] / total) * 100)} %`;
+    $("#k-top").textContent = catInfo(filas[0][0]).nombre;
+    $("#k-top-sub").textContent = `${fmt(filas[0][1])} · ${Math.round((filas[0][1] / m.total) * 100)} %`;
   } else {
     $("#k-top").textContent = "—";
     $("#k-top-sub").textContent = "";
@@ -343,41 +523,242 @@ function renderDashboard() {
   Charts.monthBars($("#chart-meses"), meses, {
     average: media,
     onSelect: (key) => {
-      const [y, m] = key.split("-").map(Number);
-      if (y === state.year && m === state.month) return;
+      const [y, mo] = key.split("-").map(Number);
+      if (y === state.year && mo === state.month) return;
       Charts.hideTip();
       state.year = y;
-      state.month = m;
+      state.month = mo;
       cargar();
     },
   });
 
-  const dias = Array.from({ length: diasMes }, (_, i) => ({ day: i + 1, value: 0 }));
+  const dias = Array.from({ length: m.diasMes }, (_, i) => ({ day: i + 1, value: 0 }));
   for (const g of state.gastos) {
     const d = Number(g.fecha.slice(8, 10));
     if (dias[d - 1]) dias[d - 1].value += Number(g.importe);
   }
   $("#acum-sub").textContent = state.presupuesto > 0
     ? `Cómo vas respecto al presupuesto de ${fmt(state.presupuesto)}.`
-    : "Ponle un presupuesto en ⚙︎ Ajustes para ver la línea de referencia.";
+    : "Ponle un presupuesto en Ajustes para ver la línea de referencia.";
   Charts.cumulative($("#chart-acum"), dias, {
     budget: state.presupuesto,
-    lastDay: diasTranscurridos,
+    lastDay: m.diasTranscurridos,
     monthLabel: nombreMes(year, month, { month: "long" }),
   });
 
-  Charts.categoryBars($("#chart-cats"), filas.map(([id, v]) => ({ label: `${catInfo(id).emoji} ${catInfo(id).nombre}`, value: v })));
+  Charts.categoryBars($("#chart-cats"), filas.map(([id, v]) => ({ label: catInfo(id).nombre, value: v })));
 }
 
+/* ---------- Pestaña Viajes ---------- */
+
+function renderViajes() {
+  const lista = $("#trips-list");
+  const detalle = $("#trip-detail");
+  const stats = new Map(state.viajes.map((v) => [v.id, statsViaje(v)]));
+  const totalViajes = [...stats.values()].reduce((s, x) => s + x.total, 0);
+  const n = state.viajes.length;
+  $("#trips-summary").textContent = n
+    ? `${n} ${n === 1 ? "viaje" : "viajes"} · ${fmt(totalViajes)} en total`
+    : "";
+
+  if (state.viajeSel && !state.viajes.some((v) => v.id === state.viajeSel)) state.viajeSel = null;
+  // En el ordenador siempre hay un viaje abierto: el que está en curso o el más reciente.
+  if (!state.viajeSel && esEscritorio() && n) state.viajeSel = (viajeEnCurso() || state.viajes[0]).id;
+
+  lista.innerHTML = n ? "" : `<div class="card empty">Aún no tienes viajes. Crea uno con «Nuevo viaje» y sus gastos se sumarán solos.</div>`;
+  const vc = viajeEnCurso();
+  for (const v of state.viajes) {
+    const s = stats.get(v.id);
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "trip-card" + (vc?.id === v.id ? " current" : "");
+    b.setAttribute("aria-current", String(state.viajeSel === v.id));
+    const estado = s.estado === "en-curso" ? `<span class="live">En curso · día ${s.vividos} de ${s.dias}</span>`
+      : s.estado === "futuro" ? `<span class="small muted">Próximamente</span>` : "";
+    b.innerHTML = `${estado}
+      <span class="top-line"><span class="t-name"></span><span class="t-total">${esc(fmt(s.total))}</span></span>
+      <span class="small muted">${esc(rangoTexto(v.inicio, v.fin))} · ${esc(fmt(s.porDia))}/día</span>
+      <span class="stack"></span>`;
+    b.querySelector(".t-name").textContent = v.nombre;
+    pintarStack(b.querySelector(".stack"), porCategoria(s.gastos), s.total || 1);
+    b.addEventListener("click", () => { state.viajeSel = v.id; renderViajes(); if (!esEscritorio()) window.scrollTo(0, 0); });
+    lista.appendChild(b);
+  }
+
+  const v = state.viajes.find((x) => x.id === state.viajeSel);
+  $(".trips-layout").classList.toggle("detail-open", Boolean(v));
+  detalle.classList.toggle("hidden", !v);
+  if (!v) return;
+  const s = stats.get(v.id);
+
+  const estado = s.estado === "en-curso" ? ` · día ${s.vividos} de ${s.dias}` : s.estado === "futuro" ? " · próximamente" : ` · ${s.dias} ${s.dias === 1 ? "día" : "días"}`;
+  detalle.innerHTML = `
+    <div class="trip-actions">
+      <button type="button" class="btn pill trip-back">${icono("M15 6l-6 6 6 6")}Viajes</button>
+      <button type="button" class="btn pill" id="trip-edit">Editar viaje</button>
+    </div>
+    <div class="trip-head">
+      <div><div class="small muted">${esc(rangoTexto(v.inicio, v.fin))}${estado}</div><h2></h2></div>
+      <div class="huge">${fmtGrande(s.total)}</div>
+    </div>
+    <div class="small muted">${esc(fmt(s.porDia))} por día · ${s.gastos.length} ${s.gastos.length === 1 ? "gasto" : "gastos"}</div>
+    <div class="sub-grid">
+      <div class="cat-rows"><div class="label">Por categoría</div></div>
+      <div class="cat-rows"><div class="label">Por día</div><div class="day-bars"></div><div class="day-labels"></div></div>
+    </div>
+    <div class="trip-gastos"><div class="label">Gastos del viaje</div></div>`;
+  detalle.querySelector("h2").textContent = v.nombre;
+  detalle.querySelector(".trip-back").addEventListener("click", () => { state.viajeSel = null; renderViajes(); });
+  detalle.querySelector("#trip-edit").addEventListener("click", () => abrirViaje(v));
+
+  const cats = detalle.querySelector(".cat-rows");
+  const filas = porCategoria(s.gastos);
+  if (!filas.length) cats.insertAdjacentHTML("beforeend", `<div class="empty">Sin gastos todavía</div>`);
+  for (const [id, imp] of filas) {
+    const c = catInfo(id);
+    cats.insertAdjacentHTML("beforeend", `<div class="cat-row"><div class="row-top"><span>${c.nombre}</span><span>${esc(fmt(imp))}</span></div>
+      <div class="bar"><div class="fill" style="width:${(imp / s.total) * 100}%;background:${c.color}"></div></div></div>`);
+  }
+
+  // Barras por día (máximo 31 para que se lean)
+  const nd = Math.min(s.dias, 31);
+  const porDia = Array.from({ length: nd }, (_, i) => {
+    const d = parseISO(v.inicio); d.setDate(d.getDate() + i);
+    const iso = isoDate(d);
+    return { d, value: sum(s.gastos.filter((g) => g.fecha === iso)) };
+  });
+  const max = Math.max(...porDia.map((x) => x.value), 1);
+  detalle.querySelector(".day-bars").innerHTML = porDia.map((x) =>
+    `<span class="${x.value ? "" : "zero"}" style="height:${Math.max((x.value / max) * 100, 4)}%" title="${esc(fmt(x.value))}"></span>`).join("");
+  const cada = nd <= 7 ? 1 : nd <= 16 ? 2 : 5;
+  detalle.querySelector(".day-labels").innerHTML = porDia.map((x, i) => {
+    const txt = nd <= 7 ? x.d.toLocaleDateString("es-ES", { weekday: "short", day: "numeric" }).replace(",", "") : String(x.d.getDate());
+    return `<span>${i % cada === 0 ? esc(txt) : ""}</span>`;
+  }).join("");
+
+  // Gastos del viaje, con opción de quitarlos (no se borran, solo dejan de contar para el viaje)
+  const cont = detalle.querySelector(".trip-gastos");
+  const ordenados = [...s.gastos].sort((a, b) => (b.fecha + b.created_at).localeCompare(a.fecha + a.created_at));
+  if (!ordenados.length) cont.insertAdjacentHTML("beforeend", `<div class="empty">Los gastos que apuntes entre la ida y la vuelta aparecerán aquí.</div>`);
+  for (const g of ordenados) {
+    const quitar = document.createElement("button");
+    quitar.type = "button";
+    quitar.className = "link-btn-sm";
+    quitar.textContent = "Quitar";
+    quitar.setAttribute("aria-label", "Quitar del viaje");
+    quitar.addEventListener("click", () => cambiarExcluido(v, g.id, true));
+    cont.appendChild(itemGasto(g, { conViaje: false, accion: quitar }));
+  }
+  const fuera = state.gastosViaje.filter((g) => enFechas(v, g) && (v.excluidos || []).includes(g.id));
+  if (fuera.length) {
+    cont.insertAdjacentHTML("beforeend", `<div class="label" style="margin-top:16px">Quitados del viaje</div>`);
+    for (const g of fuera) {
+      const volver = document.createElement("button");
+      volver.type = "button";
+      volver.className = "link-btn-sm";
+      volver.textContent = "Volver a sumar";
+      volver.addEventListener("click", () => cambiarExcluido(v, g.id, false));
+      cont.appendChild(itemGasto(g, { conViaje: false, accion: volver }));
+    }
+  }
+}
+
+async function cambiarExcluido(v, gastoId, quitar) {
+  const excluidos = quitar ? [...new Set([...(v.excluidos || []), gastoId])] : (v.excluidos || []).filter((x) => x !== gastoId);
+  try {
+    const nuevo = await state.store.updateViaje(v.id, { excluidos });
+    state.viajes = state.viajes.map((x) => (x.id === v.id ? nuevo : x));
+    pintar();
+    toast(quitar ? "Quitado del viaje" : "Vuelve a contar en el viaje");
+  } catch (e) {
+    console.error(e);
+    toast("No se ha podido guardar");
+  }
+}
+
+function abrirViaje(v = null) {
+  state.viajeEdit = v;
+  $("#trip-title").textContent = v ? "Editar viaje" : "Nuevo viaje";
+  $("#trip-name").value = v ? v.nombre : "";
+  $("#trip-start").value = v ? v.inicio : hoyISO();
+  $("#trip-end").value = v ? v.fin : hoyISO();
+  $("#trip-delete").classList.toggle("hidden", !v);
+  $("#trip-sheet").showModal();
+  if (!v) $("#trip-name").focus();
+}
+
+async function guardarViaje(ev) {
+  ev.preventDefault();
+  const nombre = $("#trip-name").value.trim();
+  const inicio = $("#trip-start").value;
+  const fin = $("#trip-end").value;
+  if (!nombre || !inicio || !fin) { toast("Pon el destino y las fechas"); return; }
+  if (fin < inicio) { toast("La vuelta no puede ser antes de la ida"); return; }
+  if (diasEntre(inicio, fin) > 366) { toast("Un viaje puede durar como mucho un año"); return; }
+  const btn = ev.submitter || $("#trip-form button[type=submit]");
+  btn.disabled = true;
+  try {
+    const datos = { nombre, inicio, fin };
+    const v = state.viajeEdit
+      ? await state.store.updateViaje(state.viajeEdit.id, datos)
+      : await state.store.addViaje(datos);
+    state.viajeSel = v.id;
+    $("#trip-sheet").close();
+    toast(state.viajeEdit ? "Viaje guardado" : `Viaje a ${nombre} creado`);
+    await cargarViajes();
+  } catch (e) {
+    console.error(e);
+    toast("No se ha podido guardar el viaje");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function borrarViaje() {
+  const v = state.viajeEdit;
+  if (!v || !confirm(`¿Borrar el viaje a ${v.nombre}? Los gastos no se borran.`)) return;
+  try {
+    await state.store.removeViaje(v.id);
+    state.viajeSel = null;
+    $("#trip-sheet").close();
+    toast("Viaje borrado");
+    await cargarViajes();
+  } catch (e) {
+    console.error(e);
+    toast("No se ha podido borrar");
+  }
+}
+
+/* ---------- Navegación entre secciones ---------- */
+
 function cambiarVista(vista) {
+  if (!VISTAS.includes(vista)) vista = "inicio";
   state.vista = vista;
   safeStorage(() => localStorage.setItem("gastos-erasmus:vista", vista));
-  $("#tab-gastos").setAttribute("aria-selected", String(vista === "gastos"));
-  $("#tab-graficos").setAttribute("aria-selected", String(vista === "graficos"));
-  $("#view-gastos").classList.toggle("hidden", vista !== "gastos");
-  $("#view-graficos").classList.toggle("hidden", vista !== "graficos");
+  for (const v of VISTAS) $(`#view-${v}`).classList.toggle("hidden", v !== vista);
+  $$("[data-view]").forEach((b) => {
+    if (b.dataset.view === vista) b.setAttribute("aria-current", "page");
+    else b.removeAttribute("aria-current");
+  });
   Charts.hideTip();
+  window.scrollTo(0, 0);
   if (vista === "graficos") renderDashboard();
+  if (vista === "viajes") renderViajes();
+  if (vista === "ajustes") llenarAjustes();
+}
+
+function llenarAjustes() {
+  $("#budget-input").value = state.presupuesto ? String(state.presupuesto).replace(".", ",") : "";
+  if (remote && state.user) {
+    const u = state.user;
+    const proveedor = u.app_metadata?.provider === "google" ? "Google" : "email y contraseña";
+    $("#account-box").classList.remove("hidden");
+    $("#account-email").textContent = u.email || "";
+    $("#account-avatar").textContent = (u.user_metadata?.full_name || u.email || "?").trim().charAt(0).toUpperCase();
+    $("#account-method").textContent = `Has entrado con ${proveedor}`;
+    $("#open-shortcuts").classList.remove("hidden");
+    $("#logout").classList.remove("hidden");
+  }
 }
 
 async function cerrarSesion() {
@@ -390,6 +771,7 @@ async function borrar(g) {
   try {
     await state.store.remove(g.id);
     state.rango = state.rango.filter((x) => x.id !== g.id);
+    state.gastosViaje = state.gastosViaje.filter((x) => x.id !== g.id);
     aplicarRango();
     pintar();
     toast("Gasto borrado");
@@ -397,6 +779,26 @@ async function borrar(g) {
     console.error(e);
     toast("No se ha podido borrar");
   }
+}
+
+/* ---------- Añadir gasto ---------- */
+
+function pistaViaje() {
+  const fecha = $("#date").value || hoyISO();
+  const v = viajeDe({ fecha, id: null });
+  const p = $("#add-trip-hint");
+  p.classList.toggle("hidden", !v);
+  if (v) p.textContent = `Se sumará al viaje a ${v.nombre}.`;
+}
+
+function abrirAñadir() {
+  // La fecha vuelve a ser hoy cada vez, aunque la app lleve días abierta.
+  $("#date").value = hoyISO();
+  $("#amount").value = "";
+  $("#note").value = "";
+  pistaViaje();
+  $("#add-sheet").showModal();
+  $("#amount").focus();
 }
 
 async function añadir(ev) {
@@ -407,7 +809,7 @@ async function añadir(ev) {
     importe,
     categoria: state.categoria,
     nota: $("#note").value.trim() || null,
-    fecha: $("#date").value || isoDate(new Date()),
+    fecha: $("#date").value || hoyISO(),
   };
   const btn = ev.submitter || $("#add-form button[type=submit]");
   btn.disabled = true;
@@ -415,11 +817,12 @@ async function añadir(ev) {
     const nuevo = await state.store.add(gasto);
     const [from, to] = rangoActual();
     if (nuevo.fecha >= from && nuevo.fecha <= to) state.rango.unshift(nuevo);
+    if (state.viajes.some((v) => enFechas(v, nuevo))) state.gastosViaje.unshift(nuevo);
     aplicarRango();
     pintar();
-    $("#amount").value = "";
-    $("#note").value = "";
-    toast(`Apuntado: ${fmt(importe)} en ${catInfo(gasto.categoria).nombre}`);
+    $("#add-sheet").close();
+    const v = viajeDe(nuevo);
+    toast(`Apuntado: ${fmt(importe)} en ${catInfo(gasto.categoria).nombre}${v ? ` · ${v.nombre}` : ""}`);
   } catch (e) {
     console.error(e);
     toast("No se ha podido guardar");
@@ -460,41 +863,24 @@ async function exportarCSV() {
   }
 }
 
-/* ---------- Pantallas (principal, ajustes, atajos) ---------- */
+/* ---------- Pantallas (app y atajo) ---------- */
 
-const PANTALLAS = ["#login", "#app", "#settings-screen", "#shortcuts-screen"];
+const PANTALLAS = ["#login", "#shell", "#shortcuts-screen"];
 let scrollPrincipal = 0;
 
 function mostrarPantalla(sel) {
-  if (!$("#app").classList.contains("hidden")) scrollPrincipal = window.scrollY;
+  if (!$("#shell").classList.contains("hidden")) scrollPrincipal = window.scrollY;
   for (const p of PANTALLAS) $(p).classList.toggle("hidden", p !== sel);
   Charts.hideTip();
-  window.scrollTo(0, sel === "#app" ? scrollPrincipal : 0);
+  window.scrollTo(0, sel === "#shell" ? scrollPrincipal : 0);
 }
 
-// Cada pantalla de ajustes es una entrada del historial: el botón «‹» y el gesto
-// o botón de atrás del móvil vuelven a la pantalla anterior.
+// La pantalla del atajo es una entrada del historial: el botón «‹» y el gesto
+// o botón de atrás del móvil vuelven a Ajustes.
 function pantallaDesdeHash() {
   if (!state.user && remote) return;
-  if (location.hash === "#ajustes") mostrarPantalla("#settings-screen");
-  else if (location.hash === "#atajos" && remote) mostrarPantalla("#shortcuts-screen");
-  else mostrarPantalla("#app");
-}
-
-function abrirAjustes() {
-  $("#budget-input").value = state.presupuesto ? String(state.presupuesto).replace(".", ",") : "";
-  if (remote && state.user) {
-    const u = state.user;
-    const proveedor = u.app_metadata?.provider === "google" ? "Google" : "email y contraseña";
-    $("#account-box").classList.remove("hidden");
-    $("#account-email").textContent = u.email || "";
-    $("#account-avatar").textContent = (u.user_metadata?.full_name || u.email || "?").trim().charAt(0).toUpperCase();
-    $("#account-method").textContent = `Has entrado con ${proveedor}`;
-    $("#open-shortcuts").classList.remove("hidden");
-    $("#logout").classList.remove("hidden");
-  }
-  history.pushState({ p: "ajustes" }, "", "#ajustes");
-  mostrarPantalla("#settings-screen");
+  if (location.hash === "#atajos" && remote) mostrarPantalla("#shortcuts-screen");
+  else mostrarPantalla("#shell");
 }
 
 let tokenAtajo = null;
@@ -586,10 +972,12 @@ async function registrarse() {
 
 async function mostrarApp() {
   if (location.hash) history.replaceState(null, "", location.pathname + location.search);
-  mostrarPantalla("#app");
+  mostrarPantalla("#shell");
+  cambiarVista(state.vista);
   state.presupuesto = await state.store.getBudget().catch(() => 0);
-  await cargar();
-  if (new URLSearchParams(location.search).has("nuevo")) $("#amount").focus();
+  await Promise.all([cargar(), cargarViajes()]);
+  if (state.vista === "ajustes") llenarAjustes();
+  if (new URLSearchParams(location.search).has("nuevo")) abrirAñadir();
 }
 
 function mostrarLogin() {
@@ -649,11 +1037,25 @@ function init() {
     $("#login-msg").textContent = `Error al entrar con Google: ${errOAuth}`;
     history.replaceState(null, "", location.pathname);
   }
-  $("#date").value = isoDate(new Date());
+  // Enlaces antiguos a #ajustes abren la sección Ajustes.
+  if (location.hash === "#ajustes") state.vista = "ajustes";
+
+  $$("[data-view]").forEach((b) => b.addEventListener("click", () => cambiarVista(b.dataset.view)));
+  $$("[data-add]").forEach((b) => b.addEventListener("click", abrirAñadir));
+  $$("[data-month]").forEach((b) => b.addEventListener("click", () => cambiarMes(Number(b.dataset.month))));
+  $$("[data-close]").forEach((b) => b.addEventListener("click", () => b.closest("dialog").close()));
+  // Tocar fuera de la hoja la cierra.
+  $$("dialog").forEach((d) => d.addEventListener("click", (e) => { if (e.target === d) d.close(); }));
+
   $("#add-form").addEventListener("submit", añadir);
-  $("#prev-month").addEventListener("click", () => cambiarMes(-1));
-  $("#next-month").addEventListener("click", () => cambiarMes(1));
-  $("#open-settings").addEventListener("click", abrirAjustes);
+  $("#date").addEventListener("change", pistaViaje);
+  $("#trip-new").addEventListener("click", () => abrirViaje());
+  $("#trip-form").addEventListener("submit", guardarViaje);
+  $("#trip-delete").addEventListener("click", borrarViaje);
+  $("#trip-start").addEventListener("change", () => {
+    if ($("#trip-end").value < $("#trip-start").value) $("#trip-end").value = $("#trip-start").value;
+  });
+
   $("#open-shortcuts").addEventListener("click", abrirAtajos);
   document.querySelectorAll("[data-back]").forEach((b) => b.addEventListener("click", () => history.back()));
   window.addEventListener("popstate", pantallaDesdeHash);
@@ -687,7 +1089,6 @@ function init() {
     $("#signup-btn").addEventListener("click", registrarse);
     $("#google-btn").addEventListener("click", entrarConGoogle);
     $("#logout").addEventListener("click", cerrarSesion);
-    $("#logout-top").addEventListener("click", cerrarSesion);
     $("#copy-code").addEventListener("click", async () => {
       if (!tokenAtajo) return;
       const ok = await copiarTexto(tokenAtajo);
@@ -721,22 +1122,27 @@ function init() {
       if (!state.user) {
         state.gastos = [];
         state.rango = [];
+        state.viajes = [];
+        state.gastosViaje = [];
         mostrarLogin();
       }
       else if (prev !== state.user.id) mostrarApp();
     });
   } else {
-    $("#logout-top").classList.add("hidden");
     mostrarApp();
   }
 
-  $("#tab-gastos").addEventListener("click", () => cambiarVista("gastos"));
-  $("#tab-graficos").addEventListener("click", () => cambiarVista("graficos"));
-  cambiarVista(state.vista);
   let resizeTimer;
+  let escritorio = esEscritorio();
   window.addEventListener("resize", () => {
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => { if (state.vista === "graficos") renderDashboard(); }, 150);
+    resizeTimer = setTimeout(() => {
+      if (state.vista === "graficos") renderDashboard();
+      if (escritorio !== esEscritorio()) {
+        escritorio = esEscritorio();
+        if (state.vista === "viajes") renderViajes();
+      }
+    }, 150);
   });
   // Tocar fuera de un gráfico oculta el tooltip.
   document.addEventListener("pointerdown", (e) => { if (!e.target.closest("svg")) Charts.hideTip(); });
@@ -748,7 +1154,10 @@ function init() {
 
   // Al volver a la app (p. ej. tras añadir un gasto desde el atajo), recargar.
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && !$("#app").classList.contains("hidden")) cargar();
+    if (document.visibilityState === "visible" && !$("#shell").classList.contains("hidden")) {
+      cargar();
+      cargarViajes();
+    }
   });
 
   if ("serviceWorker" in navigator) {
