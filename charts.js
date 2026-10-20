@@ -25,6 +25,22 @@ const Charts = (() => {
     return { top: Math.ceil(max / step) * step, step };
   }
 
+  // Ancho real de un texto en el SVG, para que márgenes y etiquetas nunca se corten.
+  function textWidth(svg, text, cls) {
+    const t = el("text", { x: 0, y: -100, class: cls, visibility: "hidden" }, svg);
+    t.textContent = text;
+    const w = t.getComputedTextLength() || String(text).length * 7.5;
+    t.remove();
+    return w;
+  }
+
+  // Ancho de la etiqueta más larga del eje Y ("1,5 k€" ocupa más que "2 k€").
+  function anchoEje(svg, top, step) {
+    let w = 0;
+    for (let v = 0; v <= top + 1e-9; v += step) w = Math.max(w, textWidth(svg, fmtCorto(v), "tick"));
+    return w;
+  }
+
   // Barra con la parte superior redondeada (4px) y la base recta sobre el eje.
   function topRoundedBar(x, y, w, h, r = 4) {
     r = Math.min(r, w / 2, h);
@@ -69,16 +85,18 @@ const Charts = (() => {
   function monthBars(container, data, { onSelect, average } = {}) {
     container.innerHTML = "";
     const W = Math.max(container.clientWidth, 260);
-    const H = 200;
-    const m = { top: 12, right: 8, bottom: 26, left: 44 };
-    const iw = W - m.left - m.right;
-    const ih = H - m.top - m.bottom;
+    const H = 210;
+    // Arriba queda sitio para la cifra de la barra seleccionada aunque llegue al máximo.
+    const m = { top: 24, right: 8, bottom: 26, left: 44 };
     const max = Math.max(...data.map((d) => d.value), average || 0);
-    const { top, step } = niceScale(max);
-    const y = (v) => m.top + ih - (v / top) * ih;
+    const { top, step } = niceScale(max * 1.05);
 
     const svg = el("svg", { width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: "img",
       "aria-label": "Gasto por mes: " + data.map((d) => `${d.label} ${fmt(d.value)}`).join(", ") }, container);
+    m.left = Math.ceil(anchoEje(svg, top, step)) + 12;
+    const iw = W - m.left - m.right;
+    const ih = H - m.top - m.bottom;
+    const y = (v) => m.top + ih - (v / top) * ih;
 
     for (let v = 0; v <= top + 1e-9; v += step) {
       el("line", { x1: m.left, x2: W - m.right, y1: y(v), y2: y(v), class: v === 0 ? "axis" : "grid" }, svg);
@@ -103,7 +121,7 @@ const Charts = (() => {
 
     if (average > 0) {
       el("line", { x1: m.left, x2: W - m.right, y1: y(average), y2: y(average), class: "ref" }, svg);
-      el("text", { x: W - m.right, y: y(average) - 4, "text-anchor": "end", class: "tick" }, svg).textContent = `media ${fmtCorto(average)}`;
+      el("text", { x: m.left + 4, y: y(average) - 4, class: "tick" }, svg).textContent = `media ${fmtCorto(average)}`;
     }
   }
 
@@ -112,21 +130,22 @@ const Charts = (() => {
   function cumulative(container, days, { budget, lastDay, monthLabel } = {}) {
     container.innerHTML = "";
     const W = Math.max(container.clientWidth, 260);
-    const H = 200;
-    const m = { top: 14, right: 12, bottom: 26, left: 44 };
-    const iw = W - m.left - m.right;
-    const ih = H - m.top - m.bottom;
+    const H = 210;
+    const m = { top: 20, right: 12, bottom: 26, left: 44 };
     const n = days.length;
     let acc = 0;
     const pts = days.map((d) => ({ day: d.day, value: d.value, cum: (acc += d.value) }));
     const shown = pts.slice(0, lastDay);
     const total = shown.length ? shown[shown.length - 1].cum : 0;
-    const { top, step } = niceScale(Math.max(total, budget || 0));
-    const x = (day) => m.left + ((day - 1) / Math.max(n - 1, 1)) * iw;
-    const y = (v) => m.top + ih - (v / top) * ih;
+    const { top, step } = niceScale(Math.max(total, budget || 0) * 1.05);
 
     const svg = el("svg", { width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: "img",
       "aria-label": `Gasto acumulado en ${monthLabel}: ${fmt(total)}` }, container);
+    m.left = Math.ceil(anchoEje(svg, top, step)) + 12;
+    const iw = W - m.left - m.right;
+    const ih = H - m.top - m.bottom;
+    const x = (day) => m.left + ((day - 1) / Math.max(n - 1, 1)) * iw;
+    const y = (v) => m.top + ih - (v / top) * ih;
 
     for (let v = 0; v <= top + 1e-9; v += step) {
       el("line", { x1: m.left, x2: W - m.right, y1: y(v), y2: y(v), class: v === 0 ? "axis" : "grid" }, svg);
@@ -183,13 +202,15 @@ const Charts = (() => {
     const total = rows.reduce((s, r) => s + r.value, 0);
     const W = Math.max(container.clientWidth, 260);
     const rowH = 30;
-    const labelW = 112;
-    const valueW = 92;
     const H = rows.length * rowH + 4;
-    const iw = W - labelW - valueW;
     const max = rows[0].value;
     const svg = el("svg", { width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: "img",
       "aria-label": "Gasto por categoría: " + rows.map((r) => `${r.label} ${fmt(r.value)}`).join(", ") }, container);
+    // Márgenes a la medida de la etiqueta y la cifra más largas: la barra mayor nunca empuja la cifra fuera.
+    const valor = (r) => `${fmt(r.value)} · ${total ? Math.round((r.value / total) * 100) : 0}%`;
+    const labelW = Math.ceil(Math.max(...rows.map((r) => textWidth(svg, r.label, "cat-label")))) + 16;
+    const valueW = Math.ceil(Math.max(...rows.map((r) => textWidth(svg, valor(r), "val")))) + 12;
+    const iw = Math.max(40, W - labelW - valueW);
     el("line", { x1: labelW, x2: labelW, y1: 0, y2: H, class: "axis" }, svg);
     rows.forEach((r, i) => {
       const yy = i * rowH + 6;

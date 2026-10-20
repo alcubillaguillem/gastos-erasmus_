@@ -1,9 +1,9 @@
 // Service worker: permite abrir la app sin conexión (los datos necesitan internet en modo Supabase).
-const CACHE = "gastos-erasmus-v17";
+const CACHE = "gastos-erasmus-v18";
 const ASSETS = [
-  "./", "index.html", "styles.css?v=17", "app.js?v=17", "charts.js?v=17", "config.js?v=17", "manifest.webmanifest",
+  "./", "index.html", "styles.css?v=18", "app.js?v=18", "charts.js?v=18", "config.js?v=18", "manifest.webmanifest",
   "vendor/supabase-js-2.117.3.js", "vendor/fonts/inter-latin.woff2", "vendor/fonts/space-grotesk-latin.woff2",
-  "icons/icon.svg?v=17", "icons/icon-192.png?v=17", "icons/icon-512.png?v=17", "icons/apple-touch-icon.png?v=17",
+  "icons/icon.svg?v=18", "icons/icon-192.png?v=18", "icons/icon-512.png?v=18", "icons/apple-touch-icon.png?v=18",
 ];
 
 self.addEventListener("install", (e) => {
