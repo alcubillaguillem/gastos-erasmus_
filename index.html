@@ -4,33 +4,38 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>Gastos Erasmus</title>
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://oawjytdklkqhwtglfbhp.supabase.co wss://oawjytdklkqhwtglfbhp.supabase.co; object-src 'none'; base-uri 'none'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://oawjytdklkqhwtglfbhp.supabase.co wss://oawjytdklkqhwtglfbhp.supabase.co; object-src 'none'; base-uri 'none'; form-action 'self'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
-  <meta name="theme-color" content="#0f172a">
+  <meta name="theme-color" content="#0a0a0c">
+  <meta name="color-scheme" content="dark">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Gastos">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="styles.css?v=16">
+  <link rel="icon" href="icons/icon.svg?v=17" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=17">
+  <link rel="preload" href="vendor/fonts/space-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="styles.css?v=17">
 </head>
 <body>
   <!-- Instrucciones para instalar la app (solo si se abre desde el navegador) -->
   <aside id="install-hint" class="install-hint hidden">
     <div class="install-text">
-      <strong>📲 Instala la app</strong>
+      <strong>Instala la app</strong>
       <span id="install-steps"></span>
     </div>
     <button type="button" id="install-btn" class="btn primary hidden">Instalar</button>
-    <button type="button" id="install-close" class="install-close" aria-label="Cerrar">✕</button>
+    <button type="button" id="install-close" class="install-close" aria-label="Cerrar">
+      <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
   </aside>
 
   <!-- Pantalla de acceso (solo si hay Supabase configurado) -->
   <section id="login" class="screen hidden">
     <div class="login-card">
-      <h1>💶 Gastos Erasmus</h1>
+      <img src="icons/icon.svg?v=17" alt="" width="72" height="72" class="login-logo">
+      <h1>Gastos Erasmus</h1>
       <p class="muted">Entra para sincronizar tus gastos entre el móvil y el ordenador.</p>
       <button type="button" id="google-btn" class="btn google wide">
         <svg viewBox="0 0 48 48" width="20" height="20" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
@@ -47,135 +52,200 @@
     </div>
   </section>
 
-  <main id="app" class="screen hidden">
-    <header class="top">
-      <button id="prev-month" class="icon-btn" aria-label="Mes anterior">‹</button>
-      <h1 id="month-label">—</h1>
-      <button id="next-month" class="icon-btn" aria-label="Mes siguiente">›</button>
-      <button id="open-settings" class="icon-btn settings" aria-label="Ajustes">⚙︎</button>
-    </header>
-
-    <nav class="tabs-row">
-      <div class="tabs" role="tablist">
-        <button type="button" class="tab" role="tab" id="tab-gastos" aria-selected="true" aria-controls="view-gastos">Gastos</button>
-        <button type="button" class="tab" role="tab" id="tab-graficos" aria-selected="false" aria-controls="view-graficos">Gráficos</button>
+  <!-- App principal: menú lateral (ordenador) o barra inferior (móvil) -->
+  <div id="shell" class="shell hidden">
+    <aside class="sidebar">
+      <div class="brand">
+        <img src="icons/icon.svg?v=17" alt="" width="34" height="34">
+        <span>Gastos Erasmus</span>
       </div>
-      <button type="button" id="logout-top" class="btn small-btn">Cerrar sesión</button>
+      <nav class="side-nav" aria-label="Secciones">
+        <button type="button" class="nav-btn" data-view="inicio"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/></svg>Inicio</button>
+        <button type="button" class="nav-btn" data-view="viajes"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M9 7V4h6v3"/></svg>Viajes</button>
+        <button type="button" class="nav-btn" data-view="graficos"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Gráficos</button>
+        <button type="button" class="nav-btn" data-view="ajustes"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>Ajustes</button>
+      </nav>
+      <button type="button" class="btn primary add-side" data-add><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Añadir gasto</button>
+    </aside>
+
+    <main class="content">
+      <!-- ===== Inicio ===== -->
+      <section id="view-inicio" class="view" aria-label="Inicio">
+        <header class="view-head">
+          <div class="month-nav">
+            <button type="button" class="round-btn" data-month="-1" aria-label="Mes anterior"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+            <h1 class="month-label">—</h1>
+            <button type="button" class="round-btn" data-month="1" aria-label="Mes siguiente"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+          </div>
+          <div id="budget-left" class="budget-left"></div>
+        </header>
+
+        <div class="grid-2">
+          <section class="card hero">
+            <div class="label">Gastado este mes</div>
+            <div id="month-total" class="huge">0<span>,00 €</span></div>
+            <div id="budget-box" class="budget hidden">
+              <div class="bar"><div id="budget-fill" class="fill"></div></div>
+              <div id="budget-text" class="small muted"></div>
+            </div>
+            <div id="cat-stack" class="stack" aria-hidden="true"></div>
+            <div id="cat-legend" class="legend"></div>
+            <div id="mode-badge" class="small muted"></div>
+          </section>
+
+          <div class="kpi-grid">
+            <div class="kpi"><div class="label">Hoy</div><div id="i-hoy" class="kpi-num">—</div><div class="small muted">&nbsp;</div></div>
+            <div class="kpi"><div class="label">Media por día</div><div id="i-media" class="kpi-num">—</div><div id="i-media-sub" class="small muted"></div></div>
+            <div class="kpi"><div class="label">Previsión fin de mes</div><div id="i-prev" class="kpi-num">—</div><div id="i-prev-sub" class="small muted"></div></div>
+            <div class="kpi"><div class="label">Frente al mes anterior</div><div id="i-vs" class="kpi-num">—</div><div id="i-vs-sub" class="small muted"></div></div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <section class="card list-card">
+            <h2>Movimientos</h2>
+            <div id="list" class="list"></div>
+          </section>
+          <div class="col">
+            <button type="button" id="trip-now" class="trip-now hidden"></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Viajes ===== -->
+      <section id="view-viajes" class="view hidden" aria-label="Viajes">
+        <header class="view-head">
+          <div>
+            <h1 class="title">Viajes</h1>
+            <div id="trips-summary" class="small muted"></div>
+          </div>
+          <button type="button" id="trip-new" class="btn pill"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nuevo viaje</button>
+        </header>
+        <div class="trips-layout">
+          <div id="trips-list" class="trips-list"></div>
+          <section id="trip-detail" class="card trip-detail hidden" aria-live="polite"></section>
+        </div>
+      </section>
+
+      <!-- ===== Gráficos ===== -->
+      <section id="view-graficos" class="view hidden" aria-label="Gráficos">
+        <header class="view-head">
+          <div class="month-nav">
+            <button type="button" class="round-btn" data-month="-1" aria-label="Mes anterior"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+            <h1 class="month-label">—</h1>
+            <button type="button" class="round-btn" data-month="1" aria-label="Mes siguiente"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+          </div>
+        </header>
+        <section class="kpi-grid kpi-4">
+          <div class="kpi"><div class="label">Total del mes</div><div id="k-total" class="kpi-num">—</div><div id="k-vs" class="small muted"></div></div>
+          <div class="kpi"><div class="label">Media por día</div><div id="k-media" class="kpi-num">—</div><div id="k-dias" class="small muted"></div></div>
+          <div class="kpi"><div class="label">Previsión fin de mes</div><div id="k-prev" class="kpi-num">—</div><div id="k-prev-sub" class="small muted"></div></div>
+          <div class="kpi"><div class="label">Categoría principal</div><div id="k-top" class="kpi-num">—</div><div id="k-top-sub" class="small muted"></div></div>
+        </section>
+        <div class="grid-2">
+          <section class="card">
+            <h2>Gasto por mes</h2>
+            <p class="small muted chart-sub">Últimos 6 meses. Toca una barra para ver ese mes.</p>
+            <div id="chart-meses" class="chart"></div>
+          </section>
+          <section class="card">
+            <h2>Gasto acumulado en el mes</h2>
+            <p id="acum-sub" class="small muted chart-sub"></p>
+            <div id="chart-acum" class="chart"></div>
+          </section>
+        </div>
+        <section class="card">
+          <h2>Por categoría</h2>
+          <div id="chart-cats" class="chart"></div>
+        </section>
+      </section>
+
+      <!-- ===== Ajustes ===== -->
+      <section id="view-ajustes" class="view hidden narrow" aria-label="Ajustes">
+        <header class="view-head"><h1 class="title">Ajustes</h1></header>
+
+        <section id="account-box" class="card account hidden">
+          <div class="avatar" id="account-avatar" aria-hidden="true">?</div>
+          <div class="account-info">
+            <div id="account-email" class="account-email"></div>
+            <div id="account-method" class="small muted"></div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>Presupuesto mensual</h2>
+          <div class="inline-form">
+            <input id="budget-input" type="text" inputmode="decimal" placeholder="Ej. 600 €" aria-label="Presupuesto mensual en euros">
+            <button type="button" id="save-budget" class="btn primary">Guardar</button>
+          </div>
+        </section>
+
+        <nav class="card menu">
+          <button type="button" id="open-shortcuts" class="menu-row hidden">
+            <span>Apuntar gastos desde el Centro de control</span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+          <button type="button" id="export-csv" class="menu-row">
+            <span>Exportar a Excel (CSV)</span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+        </nav>
+
+        <button type="button" id="logout" class="btn danger wide hidden">Cerrar sesión</button>
+      </section>
+    </main>
+
+    <nav class="tabbar" aria-label="Secciones">
+      <button type="button" class="tab-btn" data-view="inicio" aria-label="Inicio"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/></svg></button>
+      <button type="button" class="tab-btn" data-view="viajes" aria-label="Viajes"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M9 7V4h6v3"/></svg></button>
+      <button type="button" class="tab-add" data-add aria-label="Añadir gasto"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+      <button type="button" class="tab-btn" data-view="graficos" aria-label="Gráficos"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg></button>
+      <button type="button" class="tab-btn" data-view="ajustes" aria-label="Ajustes"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></button>
     </nav>
-
-    <div id="view-gastos" role="tabpanel" aria-labelledby="tab-gastos">
-    <section class="card summary">
-      <div class="summary-row">
-        <div>
-          <div class="label">Gastado este mes</div>
-          <div id="month-total" class="big">0,00 €</div>
-        </div>
-        <div class="right">
-          <div class="label">Hoy</div>
-          <div id="today-total" class="mid">0,00 €</div>
-        </div>
-      </div>
-      <div id="budget-box" class="budget hidden">
-        <div class="bar"><div id="budget-fill" class="fill"></div></div>
-        <div id="budget-text" class="small muted"></div>
-      </div>
-      <div id="mode-badge" class="small muted"></div>
-    </section>
-
-    <section class="card add">
-      <form id="add-form" autocomplete="off">
-        <div class="amount-row">
-          <input id="amount" type="text" inputmode="decimal" placeholder="0,00" aria-label="Importe" required>
-          <span class="euro">€</span>
-        </div>
-        <div id="cat-grid" class="cat-grid" role="radiogroup" aria-label="Categoría"></div>
-        <div class="extra-row">
-          <input id="note" type="text" placeholder="Nota (opcional)" maxlength="80">
-          <input id="date" type="date" aria-label="Fecha">
-        </div>
-        <button type="submit" class="btn primary wide">Añadir gasto</button>
-      </form>
-    </section>
-
-    <section class="card">
-      <h2>Por categoría</h2>
-      <div id="breakdown" class="breakdown"></div>
-    </section>
-
-    <section class="card">
-      <h2>Movimientos</h2>
-      <div id="list" class="list"></div>
-    </section>
-    </div>
-
-    <div id="view-graficos" role="tabpanel" aria-labelledby="tab-graficos" class="hidden">
-      <section class="kpis">
-        <div class="kpi"><div class="label">Total del mes</div><div id="k-total" class="kpi-num">—</div><div id="k-vs" class="small muted"></div></div>
-        <div class="kpi"><div class="label">Media por día</div><div id="k-media" class="kpi-num">—</div><div id="k-dias" class="small muted"></div></div>
-        <div class="kpi"><div class="label">Previsión fin de mes</div><div id="k-prev" class="kpi-num">—</div><div id="k-prev-sub" class="small muted"></div></div>
-        <div class="kpi"><div class="label">Categoría principal</div><div id="k-top" class="kpi-num">—</div><div id="k-top-sub" class="small muted"></div></div>
-      </section>
-
-      <section class="card">
-        <h2>Gasto por mes</h2>
-        <p class="small muted chart-sub">Últimos 6 meses. Toca una barra para ver ese mes.</p>
-        <div id="chart-meses" class="chart"></div>
-      </section>
-
-      <section class="card">
-        <h2>Gasto acumulado en el mes</h2>
-        <p id="acum-sub" class="small muted chart-sub"></p>
-        <div id="chart-acum" class="chart"></div>
-      </section>
-
-      <section class="card">
-        <h2>Por categoría</h2>
-        <div id="chart-cats" class="chart"></div>
-      </section>
-    </div>
-  </main>
+  </div>
   <div id="tooltip" class="tooltip" role="status" aria-live="polite"></div>
 
-  <!-- Ajustes: pantalla propia -->
-  <section id="settings-screen" class="screen hidden" aria-labelledby="settings-title">
-    <header class="top sub-top">
-      <button type="button" class="icon-btn back-btn" data-back aria-label="Volver">‹</button>
-      <h1 id="settings-title">Ajustes</h1>
-      <span class="top-spacer"></span>
-    </header>
-
-    <section id="account-box" class="card account hidden">
-      <div class="avatar" id="account-avatar" aria-hidden="true">?</div>
-      <div class="account-info">
-        <div id="account-email" class="account-email"></div>
-        <div id="account-method" class="small muted"></div>
+  <!-- Hoja para añadir un gasto -->
+  <dialog id="add-sheet" class="sheet-dialog" aria-labelledby="add-title">
+    <form id="add-form" class="sheet" autocomplete="off">
+      <div class="sheet-head">
+        <h2 id="add-title">Nuevo gasto</h2>
+        <button type="button" class="round-btn" data-close aria-label="Cerrar"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
       </div>
-    </section>
-
-    <section class="card">
-      <h2>Presupuesto mensual</h2>
-      <div class="inline-form">
-        <input id="budget-input" type="text" inputmode="decimal" placeholder="Ej. 600 €" aria-label="Presupuesto mensual en euros">
-        <button type="button" id="save-budget" class="btn primary">Guardar</button>
+      <div class="amount-row">
+        <input id="amount" type="text" inputmode="decimal" placeholder="0,00" aria-label="Importe" required>
+        <span class="euro">€</span>
       </div>
-    </section>
+      <div id="cat-grid" class="cat-grid" role="radiogroup" aria-label="Categoría"></div>
+      <div class="extra-row">
+        <input id="note" type="text" placeholder="Nota (opcional)" maxlength="80" aria-label="Nota">
+        <input id="date" type="date" aria-label="Fecha">
+      </div>
+      <p id="add-trip-hint" class="small trip-hint hidden"></p>
+      <button type="submit" class="btn primary wide big-btn">Añadir gasto</button>
+    </form>
+  </dialog>
 
-    <nav class="card menu">
-      <button type="button" id="open-shortcuts" class="menu-row hidden">
-        <span>📲 Apuntar gastos desde el Centro de control</span><span class="chev">›</span>
-      </button>
-      <button type="button" id="export-csv" class="menu-row">
-        <span>📄 Exportar a Excel (CSV)</span><span class="chev">›</span>
-      </button>
-    </nav>
-
-    <button type="button" id="logout" class="btn danger wide hidden">Cerrar sesión</button>
-  </section>
+  <!-- Hoja para crear o editar un viaje -->
+  <dialog id="trip-sheet" class="sheet-dialog" aria-labelledby="trip-title">
+    <form id="trip-form" class="sheet" autocomplete="off">
+      <div class="sheet-head">
+        <h2 id="trip-title">Nuevo viaje</h2>
+        <button type="button" class="round-btn" data-close aria-label="Cerrar"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      </div>
+      <label class="field">Destino<input id="trip-name" type="text" maxlength="60" placeholder="Ej. Roma" required></label>
+      <div class="extra-row">
+        <label class="field">Ida<input id="trip-start" type="date" required></label>
+        <label class="field">Vuelta<input id="trip-end" type="date" required></label>
+      </div>
+      <p class="small muted">Los gastos de estas fechas se suman al viaje, también los del atajo. Siguen contando en el total del mes.</p>
+      <button type="submit" class="btn primary wide big-btn">Guardar viaje</button>
+      <button type="button" id="trip-delete" class="btn danger wide hidden">Borrar viaje</button>
+    </form>
+  </dialog>
 
   <!-- Ajustes > Atajo del Centro de control -->
   <section id="shortcuts-screen" class="screen hidden" aria-labelledby="shortcuts-title">
     <header class="top sub-top">
-      <button type="button" class="icon-btn back-btn" data-back aria-label="Volver">‹</button>
+      <button type="button" class="round-btn" data-back aria-label="Volver"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
       <h1 id="shortcuts-title">Atajo de gastos</h1>
       <span class="top-spacer"></span>
     </header>
@@ -294,9 +364,9 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="config.js?v=16"></script>
+  <script src="config.js?v=17"></script>
   <script src="vendor/supabase-js-2.117.3.js"></script>
-  <script src="charts.js?v=16"></script>
-  <script src="app.js?v=16"></script>
+  <script src="charts.js?v=17"></script>
+  <script src="app.js?v=17"></script>
 </body>
 </html>
