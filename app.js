@@ -202,6 +202,8 @@ const state = {
   viajeSel: null,    // id del viaje abierto en la pestaña Viajes
   viajeEdit: null,   // viaje que se está editando en la hoja
   vista: VISTAS.includes(vistaGuardada) ? vistaGuardada : "inicio",
+  verTodo: false,    // en Inicio, mostrar los gastos de todo el mes y no solo los de hoy
+  pickerYear: new Date().getFullYear(),
   presupuesto: 0,
   user: null,
 };
@@ -398,11 +400,21 @@ function render() {
     tn.onclick = () => { state.viajeSel = vc.id; cambiarVista("viajes"); };
   }
 
-  // Movimientos agrupados por día
+  // Movimientos agrupados por día. En el mes actual, al principio solo se ven los de hoy.
   const list = $("#list");
-  list.innerHTML = state.gastos.length ? "" : `<div class="empty">Aún no hay gastos este mes</div>`;
+  const soloHoy = m.esMesActual && !state.verTodo;
+  const visibles = soloHoy ? state.gastos.filter((g) => g.fecha === hoy) : state.gastos;
+  const ocultos = state.gastos.length - visibles.length;
+  $("#list-title").textContent = soloHoy ? "Gastos de hoy" : "Movimientos del mes";
+  list.innerHTML = visibles.length ? ""
+    : `<div class="empty">${soloHoy ? "Hoy aún no has apuntado nada" : "Aún no hay gastos este mes"}</div>`;
+  const more = $("#list-more");
+  more.classList.toggle("hidden", !(ocultos > 0 || (m.esMesActual && state.verTodo)));
+  more.textContent = soloHoy
+    ? `Ver más · ${ocultos} ${ocultos === 1 ? "gasto" : "gastos"} de otros días`
+    : "Ver solo los de hoy";
   const porDia = new Map();
-  for (const g of state.gastos) {
+  for (const g of visibles) {
     if (!porDia.has(g.fecha)) porDia.set(g.fecha, []);
     porDia.get(g.fecha).push(g);
   }
@@ -415,7 +427,7 @@ function render() {
       : parseISO(dia).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "short" });
     head.innerHTML = `<span></span><span>${esc(fmt(sum(items)))}</span>`;
     head.firstChild.textContent = nombre;
-    list.appendChild(head);
+    if (!(soloHoy && dia === hoy)) list.appendChild(head);
     for (const g of items) list.appendChild(itemGasto(g));
   }
 }
@@ -526,9 +538,7 @@ function renderDashboard() {
       const [y, mo] = key.split("-").map(Number);
       if (y === state.year && mo === state.month) return;
       Charts.hideTip();
-      state.year = y;
-      state.month = mo;
-      cargar();
+      irAMes(y, mo);
     },
   });
 
@@ -831,11 +841,38 @@ async function añadir(ev) {
   }
 }
 
-function cambiarMes(delta) {
-  const d = new Date(state.year, state.month + delta, 1);
+function irAMes(year, month) {
+  const d = new Date(year, month, 1);
   state.year = d.getFullYear();
   state.month = d.getMonth();
+  state.verTodo = false;
   cargar();
+}
+const cambiarMes = (delta) => irAMes(state.year, state.month + delta);
+
+/* ---------- Selector de mes ---------- */
+
+function pintarSelector() {
+  const hoy = new Date();
+  $("#picker-year").textContent = state.pickerYear;
+  const cont = $("#picker-months");
+  cont.innerHTML = "";
+  for (let i = 0; i < 12; i++) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = new Date(state.pickerYear, i, 1).toLocaleDateString("es-ES", { month: "short" }).replace(".", "");
+    b.setAttribute("aria-label", new Date(state.pickerYear, i, 1).toLocaleDateString("es-ES", { month: "long", year: "numeric" }));
+    b.setAttribute("aria-current", String(state.pickerYear === state.year && i === state.month));
+    if (state.pickerYear === hoy.getFullYear() && i === hoy.getMonth()) b.classList.add("now");
+    b.addEventListener("click", () => { $("#month-picker").close(); irAMes(state.pickerYear, i); });
+    cont.appendChild(b);
+  }
+}
+
+function abrirSelector() {
+  state.pickerYear = state.year;
+  pintarSelector();
+  $("#month-picker").showModal();
 }
 
 async function exportarCSV() {
@@ -1043,6 +1080,14 @@ function init() {
   $$("[data-view]").forEach((b) => b.addEventListener("click", () => cambiarVista(b.dataset.view)));
   $$("[data-add]").forEach((b) => b.addEventListener("click", abrirAñadir));
   $$("[data-month]").forEach((b) => b.addEventListener("click", () => cambiarMes(Number(b.dataset.month))));
+  $$("[data-picker]").forEach((b) => b.addEventListener("click", abrirSelector));
+  $$("[data-year]").forEach((b) => b.addEventListener("click", () => { state.pickerYear += Number(b.dataset.year); pintarSelector(); }));
+  $("#picker-today").addEventListener("click", () => {
+    $("#month-picker").close();
+    const hoy = new Date();
+    irAMes(hoy.getFullYear(), hoy.getMonth());
+  });
+  $("#list-more").addEventListener("click", () => { state.verTodo = !state.verTodo; render(); });
   $$("[data-close]").forEach((b) => b.addEventListener("click", () => b.closest("dialog").close()));
   // Tocar fuera de la hoja la cierra.
   $$("dialog").forEach((d) => d.addEventListener("click", (e) => { if (e.target === d) d.close(); }));

@@ -13,10 +13,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Gastos">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" href="icons/icon.svg?v=18" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=18">
+  <link rel="icon" href="icons/icon.svg?v=19" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=19">
   <link rel="preload" href="vendor/fonts/space-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=18">
+  <link rel="stylesheet" href="styles.css?v=19">
 </head>
 <body>
   <!-- Instrucciones para instalar la app (solo si se abre desde el navegador) -->
@@ -34,7 +34,7 @@
   <!-- Pantalla de acceso (solo si hay Supabase configurado) -->
   <section id="login" class="screen hidden">
     <div class="login-card">
-      <img src="icons/icon.svg?v=18" alt="" width="72" height="72" class="login-logo">
+      <img src="icons/icon.svg?v=19" alt="" width="72" height="72" class="login-logo">
       <h1>Gastos Erasmus</h1>
       <p class="muted">Entra para sincronizar tus gastos entre el móvil y el ordenador.</p>
       <button type="button" id="google-btn" class="btn google wide">
@@ -56,7 +56,7 @@
   <div id="shell" class="shell hidden">
     <aside class="sidebar">
       <div class="brand">
-        <img src="icons/icon.svg?v=18" alt="" width="34" height="34">
+        <img src="icons/icon.svg?v=19" alt="" width="34" height="34">
         <span>Gastos Erasmus</span>
       </div>
       <nav class="side-nav" aria-label="Secciones">
@@ -74,8 +74,9 @@
         <header class="view-head">
           <div class="month-nav">
             <button type="button" class="round-btn" data-month="-1" aria-label="Mes anterior"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
-            <h1 class="month-label">—</h1>
+            <h1 class="month-title"><button type="button" class="month-label" data-picker title="Elegir mes">—</button></h1>
             <button type="button" class="round-btn" data-month="1" aria-label="Mes siguiente"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+            <button type="button" class="round-btn" data-picker aria-label="Elegir mes"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></button>
           </div>
           <div id="budget-left" class="budget-left"></div>
         </header>
@@ -103,8 +104,9 @@
 
         <div class="grid-2">
           <section class="card list-card">
-            <h2>Movimientos</h2>
+            <h2 id="list-title">Movimientos</h2>
             <div id="list" class="list"></div>
+            <button type="button" id="list-more" class="btn wide more-btn hidden"></button>
           </section>
           <div class="col">
             <button type="button" id="trip-now" class="trip-now hidden"></button>
@@ -132,8 +134,9 @@
         <header class="view-head">
           <div class="month-nav">
             <button type="button" class="round-btn" data-month="-1" aria-label="Mes anterior"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
-            <h1 class="month-label">—</h1>
+            <h1 class="month-title"><button type="button" class="month-label" data-picker title="Elegir mes">—</button></h1>
             <button type="button" class="round-btn" data-month="1" aria-label="Mes siguiente"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+            <button type="button" class="round-btn" data-picker aria-label="Elegir mes"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></button>
           </div>
         </header>
         <section class="kpi-grid kpi-4">
@@ -194,11 +197,11 @@
     </main>
 
     <nav class="tabbar" aria-label="Secciones">
-      <button type="button" class="tab-btn" data-view="inicio" aria-label="Inicio"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/></svg></button>
-      <button type="button" class="tab-btn" data-view="viajes" aria-label="Viajes"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M9 7V4h6v3"/></svg></button>
+      <button type="button" class="tab-btn" data-view="inicio"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z"/></svg><span>Inicio</span></button>
+      <button type="button" class="tab-btn" data-view="viajes"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M9 7V4h6v3"/></svg><span>Viajes</span></button>
       <button type="button" class="tab-add" data-add aria-label="Añadir gasto"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
-      <button type="button" class="tab-btn" data-view="graficos" aria-label="Gráficos"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg></button>
-      <button type="button" class="tab-btn" data-view="ajustes" aria-label="Ajustes"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></button>
+      <button type="button" class="tab-btn" data-view="graficos"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg><span>Gráficos</span></button>
+      <button type="button" class="tab-btn" data-view="ajustes"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg><span>Ajustes</span></button>
     </nav>
   </div>
   <div id="tooltip" class="tooltip" role="status" aria-live="polite"></div>
@@ -222,6 +225,23 @@
       <p id="add-trip-hint" class="small trip-hint hidden"></p>
       <button type="submit" class="btn primary wide big-btn">Añadir gasto</button>
     </form>
+  </dialog>
+
+  <!-- Selector de mes -->
+  <dialog id="month-picker" class="sheet-dialog picker-dialog" aria-labelledby="picker-title">
+    <div class="sheet">
+      <div class="sheet-head">
+        <h2 id="picker-title">Elegir mes</h2>
+        <button type="button" class="round-btn" data-close aria-label="Cerrar"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      </div>
+      <div class="year-nav">
+        <button type="button" class="round-btn" data-year="-1" aria-label="Año anterior"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <span id="picker-year" class="picker-year">2026</span>
+        <button type="button" class="round-btn" data-year="1" aria-label="Año siguiente"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+      </div>
+      <div id="picker-months" class="picker-months"></div>
+      <button type="button" id="picker-today" class="btn wide">Ir al mes actual</button>
+    </div>
   </dialog>
 
   <!-- Hoja para crear o editar un viaje -->
@@ -364,9 +384,9 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="config.js?v=18"></script>
+  <script src="config.js?v=19"></script>
   <script src="vendor/supabase-js-2.117.3.js"></script>
-  <script src="charts.js?v=18"></script>
-  <script src="app.js?v=18"></script>
+  <script src="charts.js?v=19"></script>
+  <script src="app.js?v=19"></script>
 </body>
 </html>
