@@ -33,7 +33,7 @@
   --series-dim: #3a3a42;
   --radius: 20px;
   --num: "Space Grotesk", "Inter", -apple-system, sans-serif;
-  --tabbar-h: 96px;
+  --tabbar-h: calc(64px + env(safe-area-inset-bottom));
 }
 
 * { box-sizing: border-box; }
@@ -64,21 +64,23 @@ button { font: inherit; color: inherit; }
 .view { display: flex; flex-direction: column; gap: 16px; }
 .view.narrow { max-width: 640px; }
 
+/* Barra inferior pegada al borde, a todo el ancho y por encima de la barra de inicio del iPhone. */
 .tabbar {
-  position: fixed; left: 16px; right: 16px; bottom: calc(20px + env(safe-area-inset-bottom)); z-index: 20;
-  height: 64px; max-width: 420px; margin: 0 auto;
-  display: flex; align-items: center; justify-content: space-between; padding: 0 8px;
-  background: rgba(21, 21, 24, .92); border: 1px solid var(--line); border-radius: 32px;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; justify-items: center;
+  padding: 6px max(8px, env(safe-area-inset-left)) calc(6px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-right));
+  background: rgba(14, 14, 17, .9); border-top: 1px solid var(--line);
   -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
 }
 .tab-btn {
-  width: 48px; height: 48px; border-radius: 24px; border: 0; background: transparent; color: var(--muted);
-  display: grid; place-items: center; cursor: pointer;
+  width: 100%; max-width: 76px; height: 52px; border-radius: 14px; border: 0; background: transparent; color: var(--muted);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer;
+  font-size: 10px; font-weight: 500; letter-spacing: .01em;
 }
 .tab-btn .ic { width: 22px; height: 22px; }
-.tab-btn[aria-current="page"] { background: var(--line); color: var(--text); }
+.tab-btn[aria-current="page"] { color: var(--accent); }
 .tab-add {
-  width: 64px; height: 48px; border-radius: 24px; border: 0; background: var(--accent); color: var(--accent-text);
+  width: 56px; height: 44px; border-radius: 22px; border: 0; background: var(--accent); color: var(--accent-text);
   display: grid; place-items: center; cursor: pointer;
 }
 .tab-add .ic { width: 24px; height: 24px; stroke-width: 2.4; }
@@ -105,8 +107,13 @@ button { font: inherit; color: inherit; }
 
 /* ---------- Cabeceras ---------- */
 .view-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
-.month-nav { display: flex; align-items: center; gap: 6px; }
-.month-label { margin: 0 6px; font: 700 22px var(--num); letter-spacing: -.01em; }
+.month-nav { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.month-title { margin: 0; }
+.month-label {
+  margin: 0 2px; padding: 4px 6px; border: 0; border-radius: 10px; background: transparent; color: var(--text);
+  font: 700 22px var(--num); letter-spacing: -.01em; cursor: pointer;
+}
+.month-label:hover { background: var(--raised); }
 .title { margin: 0; font: 700 30px var(--num); letter-spacing: -.02em; }
 .round-btn {
   width: 40px; height: 40px; border-radius: 20px; border: 1px solid var(--line); background: var(--card); color: var(--text);
@@ -276,7 +283,7 @@ input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); ou
 .divider::before, .divider::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
 
 .toast {
-  position: fixed; left: 50%; bottom: calc(100px + env(safe-area-inset-bottom)); z-index: 100;
+  position: fixed; left: 50%; bottom: calc(80px + env(safe-area-inset-bottom)); z-index: 100;
   transform: translateX(-50%) translateY(20px); opacity: 0; pointer-events: none;
   background: var(--text); color: var(--bg); font-weight: 500; padding: 10px 16px; border-radius: 14px; font-size: 14px;
   transition: opacity .2s, transform .2s; max-width: 90vw;
@@ -419,3 +426,18 @@ details.manual summary::-webkit-details-marker { display: none; }
 .manual-block { margin-top: 14px; }
 .manual-block h3 { margin: 0 0 6px; font-size: 16px; }
 @media (max-width: 899px) { .col { order: -1; } }
+
+/* ---------- Movimientos: «Ver más» ---------- */
+.more-btn { margin: 8px 0 6px; background: transparent; color: var(--text-2); font-size: 14px; padding: 10px 16px; }
+
+/* ---------- Selector de mes ---------- */
+.picker-dialog { width: min(100%, 400px); }
+.year-nav { display: flex; align-items: center; justify-content: space-between; }
+.picker-year { font: 700 22px var(--num); }
+.picker-months { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.picker-months button {
+  height: 48px; border-radius: 14px; border: 1px solid var(--line); background: var(--chip); color: var(--text-2);
+  font-size: 15px; font-weight: 500; cursor: pointer; text-transform: capitalize;
+}
+.picker-months button.now { border-color: var(--muted); color: var(--text); }
+.picker-months button[aria-current="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
