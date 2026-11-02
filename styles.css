@@ -171,10 +171,11 @@ button { font: inherit; color: inherit; }
 .item .amt { font: 500 16px var(--num); white-space: nowrap; }
 .item { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; transition: transform .2s, opacity .2s; }
 .item.pressing { transform: scale(.97); opacity: .8; }
-.item .more { display: none; background: none; border: 0; color: var(--muted); padding: 8px; margin-right: -8px; cursor: pointer; place-items: center; border-radius: 10px; }
-.item .more .ic { width: 18px; height: 18px; stroke-width: 3; }
-.item .more:hover { background: var(--raised); color: var(--text); }
-@media (hover: hover) and (pointer: fine) { .item .more { display: grid; } }
+.item .more, .cat-admin-row .more { display: none; background: none; border: 0; color: var(--muted); padding: 8px; cursor: pointer; place-items: center; border-radius: 10px; }
+.item .more { margin-right: -8px; }
+.item .more .ic, .cat-admin-row .more .ic { width: 18px; height: 18px; stroke-width: 3; }
+.item .more:hover, .cat-admin-row .more:hover { background: var(--raised); color: var(--text); }
+@media (hover: hover) and (pointer: fine) { .item .more, .cat-admin-row .more { display: grid; } }
 .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 16px 0; }
 
 /* ---------- Viajes ---------- */
@@ -501,7 +502,19 @@ details.manual summary::-webkit-details-marker { display: none; }
 .btn.small-pill { height: 36px; padding: 0 14px; font-size: 14px; }
 .cats-card > p { margin: 0 0 8px; }
 .cats-admin { display: flex; flex-direction: column; }
-.cat-admin-row { display: flex; align-items: center; gap: 6px; border-top: 1px solid var(--line); padding: 6px 0; }
+.cat-admin-row {
+  display: flex; align-items: center; gap: 6px; border-top: 1px solid var(--line); padding: 6px 0; position: relative;
+  background: var(--card); -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; transition: transform .2s, opacity .2s;
+}
+.cat-admin-row.pressing { transform: scale(.97); opacity: .8; }
+.cats-admin.sorting .cat-admin-row { transition: transform .2s; }
+.cats-admin.sorting .cat-admin-row.dragging {
+  transition: none; z-index: 5; background: var(--raised); border-radius: 14px; border-top-color: transparent;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .5); padding-left: 8px; padding-right: 8px; margin: 0 -8px;
+}
+.drag-handle { display: grid; place-items: center; width: 40px; height: 40px; color: var(--muted); cursor: grab; touch-action: none; }
+.drag-handle .ic { width: 20px; height: 20px; }
+.ctx-preview .cat-admin-row { border-top: 0; transform: none; opacity: 1; }
 .cat-admin-row:first-child { border-top: 0; }
 .cat-admin-main {
   flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; background: none; border: 0;

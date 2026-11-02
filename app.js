@@ -924,24 +924,142 @@ async function cargarCategorias() {
   pintarCategoriasAjustes();
 }
 
+const ICONO_ARRASTRAR = "M5 9h14M5 15h14";
+
 function pintarCategoriasAjustes() {
   const cont = $("#cats-admin");
   cont.innerHTML = "";
-  const n = state.categorias.length;
-  state.categorias.forEach((cat, i) => {
+  state.categorias.forEach((cat) => {
     const c = catInfo(cat.clave);
     const row = document.createElement("div");
     row.className = "cat-admin-row";
     row.innerHTML = `
       <button type="button" class="cat-admin-main"><span class="cat-ic" style="color:${c.color}">${icono(c.icono)}</span><span class="cat-admin-name"></span></button>
-      <button type="button" class="round-btn sm" data-dir="-1" aria-label="Subir"${i === 0 ? " disabled" : ""}>${icono("M6 15l6-6 6 6")}</button>
-      <button type="button" class="round-btn sm" data-dir="1" aria-label="Bajar"${i === n - 1 ? " disabled" : ""}>${icono("M6 9l6 6 6-6")}</button>`;
+      <button type="button" class="more" aria-label="Opciones de la categoría">${icono(ICONO_MAS)}</button>
+      <span class="drag-handle" aria-hidden="true">${icono(ICONO_ARRASTRAR)}</span>`;
     row.querySelector(".cat-admin-name").textContent = c.nombre;
-    row.querySelector(".cat-admin-main").addEventListener("click", () => abrirCategoria(cat));
-    row.querySelectorAll("[data-dir]").forEach((b) => b.addEventListener("click", () => moverCategoria(i, Number(b.dataset.dir))));
+    row.querySelector(".cat-admin-main").addEventListener("click", () => {
+      // Tras mantener pulsado o arrastrar, el clic que llega al soltar no abre la hoja.
+      if (Date.now() < Number(row.dataset.ignorarHasta || 0)) return;
+      abrirCategoria(cat);
+    });
+    row.querySelector(".more").addEventListener("click", () => abrirMenuCategoria(cat, row));
+    prepararArrastre(row, cat);
     cont.appendChild(row);
   });
-  $("#cat-new").disabled = n >= MAX_CATEGORIAS;
+  $("#cat-new").disabled = state.categorias.length >= MAX_CATEGORIAS;
+}
+
+// Mantener pulsada una categoría abre su menú; si después se mueve el dedo, el menú se
+// cierra y la fila se arrastra (como en iPhone). Desde el asa ≡ se arrastra directamente.
+function prepararArrastre(row, cat) {
+  let timer = null, x0 = 0, y0 = 0, pulsado = false;
+  const asa = row.querySelector(".drag-handle");
+  const cancelar = () => { clearTimeout(timer); timer = null; row.classList.remove("pressing"); };
+
+  row.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0 || e.target.closest(".more")) return;
+    x0 = e.clientX; y0 = e.clientY; pulsado = false;
+    if (asa.contains(e.target)) {
+      e.preventDefault();
+      asa.setPointerCapture(e.pointerId);
+      arrastrar(row, asa, e.pointerId, y0);
+      return;
+    }
+    row.classList.add("pressing");
+    const id = e.pointerId;
+    timer = setTimeout(() => {
+      timer = null;
+      row.classList.remove("pressing");
+      pulsado = true;
+      try { row.setPointerCapture(id); } catch { /* el dedo ya se levantó */ }
+      navigator.vibrate?.(10);
+      abrirMenuCategoria(cat, row);
+    }, 450);
+  });
+  row.addEventListener("pointermove", (e) => {
+    if (timer && Math.hypot(e.clientX - x0, e.clientY - y0) > 8) cancelar();
+    else if (pulsado && Math.hypot(e.clientX - x0, e.clientY - y0) > 8) {
+      pulsado = false;
+      cerrarMenu(true);
+      arrastrar(row, row, e.pointerId, y0);
+      row.dispatchEvent(new PointerEvent("pointermove", e));
+    }
+  });
+  for (const ev of ["pointerup", "pointercancel"]) {
+    row.addEventListener(ev, () => {
+      if (pulsado) row.dataset.ignorarHasta = String(Date.now() + 500);
+      cancelar();
+      pulsado = false;
+    });
+  }
+  row.addEventListener("pointerleave", () => { if (timer) cancelar(); });
+  row.addEventListener("contextmenu", (e) => { e.preventDefault(); cancelar(); abrirMenuCategoria(cat, row); });
+  // En iOS, una vez pulsada la fila, el dedo no debe desplazar la página.
+  row.addEventListener("touchmove", (e) => { if (pulsado || row.classList.contains("dragging")) e.preventDefault(); }, { passive: false });
+}
+
+function arrastrar(row, capturador, pointerId, y0) {
+  const cont = $("#cats-admin");
+  const filas = [...cont.children];
+  const i = filas.indexOf(row);
+  const rects = filas.map((f) => f.getBoundingClientRect());
+  const paso = filas.length > 1 ? rects[1].top - rects[0].top : rects[i].height;
+  const scroll0 = window.scrollY;
+  let destino = i, ultimoY = y0, raf = null, fin = false;
+
+  row.classList.add("dragging");
+  cont.classList.add("sorting");
+
+  const actualizar = () => {
+    const dy = ultimoY - y0 + (window.scrollY - scroll0);
+    row.style.transform = `translateY(${dy}px) scale(1.02)`;
+    const centro = rects[i].top + rects[i].height / 2 + dy;
+    destino = i;
+    filas.forEach((f, j) => {
+      const mitad = rects[j].top + rects[j].height / 2;
+      if (j < i && centro < mitad) destino = Math.min(destino, j);
+      if (j > i && centro > mitad) destino = Math.max(destino, j);
+    });
+    filas.forEach((f, j) => {
+      if (j === i) return;
+      const desplazar = i < j && j <= destino ? -paso : destino <= j && j < i ? paso : 0;
+      f.style.transform = desplazar ? `translateY(${desplazar}px)` : "";
+    });
+  };
+  // Si el dedo llega al borde de la pantalla, la página se desplaza sola.
+  const autoScroll = () => {
+    if (fin) return;
+    const abajo = window.innerHeight - (esEscritorio() ? 0 : 90);
+    const v = ultimoY < 90 ? -8 : ultimoY > abajo - 60 ? 8 : 0;
+    if (v) { window.scrollBy(0, v); actualizar(); }
+    raf = requestAnimationFrame(autoScroll);
+  };
+  raf = requestAnimationFrame(autoScroll);
+
+  const mover = (e) => { if (e.pointerId !== pointerId) return; ultimoY = e.clientY; actualizar(); };
+  const soltar = (e) => {
+    if (e.pointerId !== pointerId) return;
+    fin = true;
+    cancelAnimationFrame(raf);
+    capturador.removeEventListener("pointermove", mover);
+    capturador.removeEventListener("pointerup", soltar);
+    capturador.removeEventListener("pointercancel", soltar);
+    row.dataset.ignorarHasta = String(Date.now() + 500);
+    cont.classList.remove("sorting");
+    row.classList.remove("dragging");
+    filas.forEach((f) => { f.style.transform = ""; });
+    if (destino !== i) {
+      const lista = [...state.categorias];
+      const [movida] = lista.splice(i, 1);
+      lista.splice(destino, 0, movida);
+      guardarOrden(lista);
+    }
+  };
+  capturador.addEventListener("pointermove", mover);
+  capturador.addEventListener("pointerup", soltar);
+  capturador.addEventListener("pointercancel", soltar);
+  actualizar();
 }
 
 let catColor = COLORES[0];
@@ -1051,11 +1169,8 @@ async function borrarCategoria() {
   }
 }
 
-async function moverCategoria(i, dir) {
-  const j = i + dir;
-  if (j < 0 || j >= state.categorias.length) return;
-  const lista = [...state.categorias];
-  [lista[i], lista[j]] = [lista[j], lista[i]];
+// Guarda el nuevo orden: es el mismo en el que el atajo muestra las categorías.
+async function guardarOrden(lista) {
   const cambios = lista.map((c, orden) => ({ c, orden })).filter(({ c, orden }) => c.orden !== orden);
   state.categorias = lista.map((c, orden) => ({ ...c, orden }));
   pintarCategoriasAjustes();
@@ -1153,10 +1268,11 @@ function mantenerPulsado(el, fn) {
 
 let menuAbierto = null;
 
-function cerrarMenuGasto() {
+function cerrarMenu(inmediato = false) {
   if (!menuAbierto) return;
   const m = menuAbierto;
   menuAbierto = null;
+  if (inmediato) { m.remove(); return; }
   m.classList.remove("show");
   setTimeout(() => m.remove(), 180);
 }
@@ -1171,7 +1287,9 @@ function filaMenu(texto, icon, fn, { peligro = false, activo = false } = {}) {
   return b;
 }
 
-function abrirMenuGasto(g, el) {
+// Menú estilo iPhone: la copia del elemento queda en su sitio y el menú debajo (o encima).
+// construir(menu, colocar) rellena el menú y llama a colocar() cada vez que cambia.
+function abrirMenu(el, construir) {
   if (menuAbierto) return;
   const rect = el.getBoundingClientRect();
   const capa = document.createElement("div");
@@ -1179,48 +1297,13 @@ function abrirMenuGasto(g, el) {
   capa.innerHTML = `<div class="ctx-preview"></div><div class="ctx-menu" role="menu"></div>`;
   const preview = capa.querySelector(".ctx-preview");
   const copia = el.cloneNode(true);
-  copia.querySelector(".more")?.remove();
+  copia.classList.remove("pressing");
+  copia.querySelectorAll(".more, .drag-handle").forEach((x) => x.remove());
   preview.appendChild(copia);
   const menu = capa.querySelector(".ctx-menu");
   document.body.appendChild(capa);
   menuAbierto = capa;
 
-  const v = viajeDe(g);
-  const principal = () => {
-    menu.innerHTML = "";
-    menu.append(
-      filaMenu("Editar", ICONO_EDITAR, () => { cerrarMenuGasto(); abrirAñadir(g); }),
-      filaMenu(v ? "Cambiar de viaje" : "Añadir a viaje", ICONO_AVION, viajes),
-      filaMenu("Eliminar", ICONO_PAPELERA, () => { cerrarMenuGasto(); borrar(g); }, { peligro: true }),
-    );
-    if (v) {
-      const info = document.createElement("div");
-      info.className = "ctx-info";
-      info.textContent = `En el viaje a ${v.nombre}`;
-      menu.prepend(info);
-    }
-    colocar();
-  };
-  const viajes = () => {
-    menu.innerHTML = "";
-    menu.append(filaMenu("Atrás", "M15 6l-6 6 6 6", principal));
-    menu.firstChild.classList.add("back");
-    const abiertos = viajesAbiertos();
-    if (!abiertos.length) {
-      const info = document.createElement("div");
-      info.className = "ctx-info";
-      info.textContent = "No tienes viajes abiertos";
-      menu.append(info);
-    }
-    for (const x of abiertos) {
-      menu.append(filaMenu(x.nombre, x.id === g.viaje_id ? ICONO_CHECK : null,
-        () => { cerrarMenuGasto(); if (x.id !== g.viaje_id) moverAViaje(g, x); }, { activo: x.id === g.viaje_id }));
-    }
-    if (v) menu.append(filaMenu("Quitar del viaje", ICONO_X, () => { cerrarMenuGasto(); moverAViaje(g, null); }, { peligro: true }));
-    colocar();
-  };
-
-  // La copia del gasto queda donde estaba y el menú debajo; si no cabe, encima.
   function colocar() {
     const margen = 12, hueco = 8;
     const alto = window.innerHeight;
@@ -1240,9 +1323,63 @@ function abrirMenuGasto(g, el) {
     menu.style.right = izquierda ? "auto" : `${Math.max(margen, window.innerWidth - rect.right)}px`;
   }
 
-  principal();
-  capa.addEventListener("click", (e) => { if (e.target === capa || e.target.closest(".ctx-preview")) cerrarMenuGasto(); });
+  construir(menu, colocar);
+  capa.addEventListener("click", (e) => { if (e.target === capa || e.target.closest(".ctx-preview")) cerrarMenu(); });
   requestAnimationFrame(() => capa.classList.add("show"));
+}
+
+function abrirMenuGasto(g, el) {
+  abrirMenu(el, (menu, colocar) => {
+    const v = viajeDe(g);
+    const principal = () => {
+      menu.innerHTML = "";
+      menu.append(
+        filaMenu("Editar", ICONO_EDITAR, () => { cerrarMenu(); abrirAñadir(g); }),
+        filaMenu(v ? "Cambiar de viaje" : "Añadir a viaje", ICONO_AVION, viajes),
+        filaMenu("Eliminar", ICONO_PAPELERA, () => { cerrarMenu(); borrar(g); }, { peligro: true }),
+      );
+      if (v) {
+        const info = document.createElement("div");
+        info.className = "ctx-info";
+        info.textContent = `En el viaje a ${v.nombre}`;
+        menu.prepend(info);
+      }
+      colocar();
+    };
+    const viajes = () => {
+      menu.innerHTML = "";
+      menu.append(filaMenu("Atrás", "M15 6l-6 6 6 6", principal));
+      menu.firstChild.classList.add("back");
+      const abiertos = viajesAbiertos();
+      if (!abiertos.length) {
+        const info = document.createElement("div");
+        info.className = "ctx-info";
+        info.textContent = "No tienes viajes abiertos";
+        menu.append(info);
+      }
+      for (const x of abiertos) {
+        menu.append(filaMenu(x.nombre, x.id === g.viaje_id ? ICONO_CHECK : null,
+          () => { cerrarMenu(); if (x.id !== g.viaje_id) moverAViaje(g, x); }, { activo: x.id === g.viaje_id }));
+      }
+      if (v) menu.append(filaMenu("Quitar del viaje", ICONO_X, () => { cerrarMenu(); moverAViaje(g, null); }, { peligro: true }));
+      colocar();
+    };
+    principal();
+  });
+}
+
+function abrirMenuCategoria(cat, el) {
+  abrirMenu(el, (menu, colocar) => {
+    menu.append(filaMenu("Editar", ICONO_EDITAR, () => { cerrarMenu(); abrirCategoria(cat); }));
+    if (state.categorias.length > 1) {
+      menu.append(filaMenu("Eliminar", ICONO_PAPELERA, () => { cerrarMenu(); state.catEdit = cat; borrarCategoria(); }, { peligro: true }));
+    }
+    const info = document.createElement("div");
+    info.className = "ctx-info";
+    info.textContent = "Arrastra para cambiar el orden";
+    menu.append(info);
+    colocar();
+  });
 }
 
 async function moverAViaje(g, v) {
@@ -1561,8 +1698,8 @@ function init() {
 
   $$("[data-view]").forEach((b) => b.addEventListener("click", () => cambiarVista(b.dataset.view)));
   $$("[data-add]").forEach((b) => b.addEventListener("click", () => abrirAñadir()));
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") cerrarMenuGasto(); });
-  window.addEventListener("scroll", cerrarMenuGasto, { passive: true });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") cerrarMenu(); });
+  window.addEventListener("scroll", () => cerrarMenu(), { passive: true });
   $$("[data-month]").forEach((b) => b.addEventListener("click", () => cambiarMes(Number(b.dataset.month))));
   $$("[data-picker]").forEach((b) => b.addEventListener("click", abrirSelector));
   $$("[data-year]").forEach((b) => b.addEventListener("click", () => { state.pickerYear += Number(b.dataset.year); pintarSelector(); }));
