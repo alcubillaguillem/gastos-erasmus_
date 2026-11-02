@@ -6,6 +6,7 @@ App web instalable (PWA) para controlar los gastos del Erasmus por categorías y
 - `config.js`: URL y clave pública de Supabase. Vacío = modo local (solo este navegador).
 - `supabase/schema.sql`: tablas, seguridad por usuario (RLS) y las funciones `add_gasto` / `add_gasto_texto` que usan los atajos de iOS.
 - `supabase/004_viajes.sql`: tabla de viajes. Los gastos entre la ida y la vuelta cuentan para el viaje, salvo los que se quiten a mano.
+- `supabase/005_viajes_asignacion.sql`: cada gasto guarda su viaje (`viaje_id`) y los viajes se pueden cerrar. Un gasto nuevo va solo al viaje abierto que cubra su fecha; después se puede mover a cualquier viaje abierto manteniéndolo pulsado.
 - `vendor/fonts/`: Inter y Space Grotesk (licencia SIL OFL), servidas desde la propia app.
 - `GUIA.md`: puesta en marcha paso a paso y cómo crear los atajos.
 

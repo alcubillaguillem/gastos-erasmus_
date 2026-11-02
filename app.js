@@ -26,6 +26,11 @@ const CAT = Object.fromEntries(CATEGORIAS.map((c) => [c.id, c]));
 const catInfo = (id) => CAT[id] || CAT.otros;
 const icono = (d, extra = "") => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"${extra}><path d="${d}"/></svg>`;
 const ICONO_X = "M6 6l12 12M18 6 6 18";
+const ICONO_MAS = "M5 12h.01M12 12h.01M19 12h.01";
+const ICONO_EDITAR = "M4 20h4L19 9l-4-4L4 16zM14 6l4 4";
+const ICONO_AVION = "M22 2 11 13M22 2l-7 20-4-9-9-4z";
+const ICONO_PAPELERA = "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3";
+const ICONO_CHECK = "M5 12l5 5 9-10";
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
@@ -91,12 +96,26 @@ class LocalStore {
     return this.all().filter((g) => g.fecha >= from && g.fecha <= to);
   }
   async listAll() { return this.all(); }
+  async listConViaje() { return this.all().filter((g) => g.viaje_id); }
+  // Igual que el trigger de Supabase: un gasto nuevo va al viaje abierto que cubra su fecha.
   async add(g) {
-    const item = { ...g, id: crypto.randomUUID(), created_at: new Date().toISOString() };
+    const auto = this.viajesAll().filter((v) => !v.cerrado && g.fecha >= v.inicio && g.fecha <= v.fin)
+      .sort((a, b) => b.inicio.localeCompare(a.inicio))[0];
+    const item = { viaje_id: auto?.id || null, ...g, id: crypto.randomUUID(), created_at: new Date().toISOString() };
     const list = this.all(); list.push(item); this.save(list);
     return item;
   }
+  async update(id, patch) {
+    const list = this.all().map((g) => (g.id === id ? { ...g, ...patch } : g));
+    this.save(list);
+    return list.find((g) => g.id === id);
+  }
   async remove(id) { this.save(this.all().filter((g) => g.id !== id)); }
+  // Igual que el trigger de Supabase: un viaje abierto recoge los gastos sin viaje de sus fechas.
+  recoger(v) {
+    if (v.cerrado) return;
+    this.save(this.all().map((g) => (!g.viaje_id && g.fecha >= v.inicio && g.fecha <= v.fin ? { ...g, viaje_id: v.id } : g)));
+  }
   async getBudget() { return safeStorage(() => Number(localStorage.getItem("gastos-erasmus:presupuesto")) || 0, 0); }
   async setBudget(v) { safeStorage(() => localStorage.setItem("gastos-erasmus:presupuesto", String(v))); }
 
@@ -104,16 +123,22 @@ class LocalStore {
   viajesSave(list) { safeStorage(() => localStorage.setItem(this.keyViajes, JSON.stringify(list))); }
   async listViajes() { return this.viajesAll().sort((a, b) => b.inicio.localeCompare(a.inicio)); }
   async addViaje(v) {
-    const item = { excluidos: [], ...v, id: crypto.randomUUID(), created_at: new Date().toISOString() };
+    const item = { cerrado: false, ...v, id: crypto.randomUUID(), created_at: new Date().toISOString() };
     this.viajesSave([...this.viajesAll(), item]);
+    this.recoger(item);
     return item;
   }
   async updateViaje(id, patch) {
     const list = this.viajesAll().map((v) => (v.id === id ? { ...v, ...patch } : v));
     this.viajesSave(list);
-    return list.find((v) => v.id === id);
+    const v = list.find((x) => x.id === id);
+    if ("inicio" in patch || "fin" in patch) this.recoger(v);
+    return v;
   }
-  async removeViaje(id) { this.viajesSave(this.viajesAll().filter((v) => v.id !== id)); }
+  async removeViaje(id) {
+    this.viajesSave(this.viajesAll().filter((v) => v.id !== id));
+    this.save(this.all().map((g) => (g.viaje_id === id ? { ...g, viaje_id: null } : g)));
+  }
 }
 
 class SupabaseStore {
@@ -130,8 +155,18 @@ class SupabaseStore {
     if (error) throw error;
     return data;
   }
+  async listConViaje() {
+    const { data, error } = await this.sb.from("gastos").select("*").not("viaje_id", "is", null);
+    if (error) throw error;
+    return data;
+  }
   async add(g) {
     const { data, error } = await this.sb.from("gastos").insert(g).select().single();
+    if (error) throw error;
+    return data;
+  }
+  async update(id, patch) {
+    const { data, error } = await this.sb.from("gastos").update(patch).eq("id", id).select().single();
     if (error) throw error;
     return data;
   }
@@ -198,9 +233,12 @@ const state = {
   gastos: [],        // gastos del mes seleccionado
   rango: [],         // gastos de los últimos 6 meses (para los gráficos)
   viajes: [],        // viajes, del más reciente al más antiguo
-  gastosViaje: [],   // gastos entre la ida del primer viaje y la vuelta del último
+  gastosViaje: [],   // gastos que pertenecen a algún viaje
   viajeSel: null,    // id del viaje abierto en la pestaña Viajes
   viajeEdit: null,   // viaje que se está editando en la hoja
+  gastoEdit: null,   // gasto que se está editando en la hoja de añadir
+  verTodoViaje: false, // en el detalle de un viaje, mostrar todos sus gastos
+  verCerrados: false,  // sección «Cerrados» desplegada en la pestaña Viajes
   vista: VISTAS.includes(vistaGuardada) ? vistaGuardada : "inicio",
   verTodo: false,    // en Inicio, mostrar los gastos de todo el mes y no solo los de hoy
   pickerYear: new Date().getFullYear(),
@@ -210,17 +248,23 @@ const state = {
 
 /* ---------- Viajes: qué gastos cuentan ---------- */
 
-// Un gasto es de un viaje si su fecha cae entre la ida y la vuelta y no se ha quitado a mano.
+// Cada gasto guarda su viaje (viaje_id). Al apuntarlo va solo al viaje abierto que cubra
+// su fecha; después se puede mover a cualquier viaje abierto desde el menú del gasto.
 function viajeDe(g) {
-  return state.viajes.find((v) => g.fecha >= v.inicio && g.fecha <= v.fin && !(v.excluidos || []).includes(g.id)) || null;
+  return g.viaje_id ? state.viajes.find((v) => v.id === g.viaje_id) || null : null;
 }
 function enFechas(v, g) { return g.fecha >= v.inicio && g.fecha <= v.fin; }
-function gastosDe(v) {
-  return state.gastosViaje.filter((g) => enFechas(v, g) && !(v.excluidos || []).includes(g.id) && viajeDe(g)?.id === v.id);
+// Viaje al que irá un gasto nuevo de esa fecha (mismo criterio que el trigger de Supabase).
+function viajeAuto(fecha) {
+  return state.viajes.find((v) => !v.cerrado && enFechas(v, { fecha })) || null;
 }
+function gastosDe(v) {
+  return state.gastosViaje.filter((g) => g.viaje_id === v.id);
+}
+const viajesAbiertos = () => state.viajes.filter((v) => !v.cerrado);
 function viajeEnCurso() {
   const hoy = hoyISO();
-  return state.viajes.find((v) => v.inicio <= hoy && hoy <= v.fin) || null;
+  return state.viajes.find((v) => !v.cerrado && v.inicio <= hoy && hoy <= v.fin) || null;
 }
 // Días que cuentan para la media: los ya vividos si el viaje está en curso.
 function diasViaje(v) {
@@ -257,13 +301,12 @@ function renderCategoryPicker() {
     b.type = "button";
     b.className = "cat";
     b.setAttribute("role", "radio");
+    b.dataset.cat = c.id;
     b.setAttribute("aria-checked", String(c.id === state.categoria));
     b.innerHTML = `${icono(c.icono, ` style="color:${c.color}"`)}<span>${c.nombre}</span>`;
     b.addEventListener("click", () => {
-      state.categoria = c.id;
-      safeStorage(() => localStorage.setItem("gastos-erasmus:ultima-cat", c.id));
-      grid.querySelectorAll(".cat").forEach((el) => el.setAttribute("aria-checked", "false"));
-      b.setAttribute("aria-checked", "true");
+      elegirCategoria(c.id);
+      if (!state.gastoEdit) safeStorage(() => localStorage.setItem("gastos-erasmus:ultima-cat", c.id));
     });
     grid.appendChild(b);
   }
@@ -291,7 +334,14 @@ function calcMes() {
   return { esMesActual, esFuturo, diasMes, diasTranscurridos, total, mediaDia, prevision: mediaDia * diasMes, totalAnterior, nombreAnterior };
 }
 
-function itemGasto(g, { conViaje = true, accion = null } = {}) {
+// Hora a la que se apuntó el gasto ("14:32"), para ubicarlo.
+function horaDe(g) {
+  if (!g.created_at) return "";
+  const d = new Date(g.created_at);
+  return Number.isNaN(d.getTime()) ? "" : d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+}
+
+function itemGasto(g, { conViaje = true } = {}) {
   const c = catInfo(g.categoria);
   const v = conViaje ? viajeDe(g) : null;
   const el = document.createElement("div");
@@ -299,27 +349,46 @@ function itemGasto(g, { conViaje = true, accion = null } = {}) {
   el.innerHTML = `
     <span class="cat-ic" style="color:${c.color}">${icono(c.icono)}</span>
     <div class="info"><div class="note"></div><div class="meta"></div></div>
-    <span class="amt">−${esc(fmt(g.importe).replace(/\s?€$/, ""))}</span>`;
+    <span class="amt">−${esc(fmt(g.importe).replace(/\s?€$/, ""))}</span>
+    <button type="button" class="more" aria-label="Opciones del gasto">${icono(ICONO_MAS)}</button>`;
   el.querySelector(".note").textContent = g.nota || c.nombre;
+  const partes = [horaDe(g), g.nota ? c.nombre : ""].filter(Boolean);
   const meta = el.querySelector(".meta");
-  meta.textContent = g.nota ? c.nombre : "";
+  meta.textContent = partes.join(" · ");
   if (v) {
-    if (g.nota) meta.append(" · ");
+    if (partes.length) meta.append(" · ");
     const s = document.createElement("span");
     s.className = "trip";
     s.textContent = v.nombre;
     meta.append(s);
   }
-  if (accion) el.appendChild(accion);
-  else {
-    const del = document.createElement("button");
-    del.className = "del";
-    del.setAttribute("aria-label", "Borrar gasto");
-    del.innerHTML = icono(ICONO_X);
-    del.addEventListener("click", () => borrar(g));
-    el.appendChild(del);
-  }
+  el.querySelector(".more").addEventListener("click", () => abrirMenuGasto(g, el));
+  mantenerPulsado(el, () => abrirMenuGasto(g, el));
   return el;
+}
+
+// Gastos agrupados por día, del más reciente al más antiguo.
+function pintarDias(cont, gastos, { sinCabecera = null, conViaje = true } = {}) {
+  const hoy = hoyISO();
+  const ayer = isoDate(new Date(Date.now() - 86400000));
+  const porDia = new Map();
+  for (const g of gastos) {
+    if (!porDia.has(g.fecha)) porDia.set(g.fecha, []);
+    porDia.get(g.fecha).push(g);
+  }
+  for (const dia of [...porDia.keys()].sort().reverse()) {
+    const items = porDia.get(dia).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+    if (dia !== sinCabecera) {
+      const head = document.createElement("div");
+      head.className = "day";
+      const nombre = dia === hoy ? "Hoy" : dia === ayer ? "Ayer"
+        : parseISO(dia).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "short" });
+      head.innerHTML = `<span></span><span>${esc(fmt(sum(items)))}</span>`;
+      head.firstChild.textContent = nombre;
+      cont.appendChild(head);
+    }
+    for (const g of items) cont.appendChild(itemGasto(g, { conViaje }));
+  }
 }
 
 function render() {
@@ -413,23 +482,7 @@ function render() {
   more.textContent = soloHoy
     ? `Ver más · ${ocultos} ${ocultos === 1 ? "gasto" : "gastos"} de otros días`
     : "Ver solo los de hoy";
-  const porDia = new Map();
-  for (const g of visibles) {
-    if (!porDia.has(g.fecha)) porDia.set(g.fecha, []);
-    porDia.get(g.fecha).push(g);
-  }
-  const ayer = isoDate(new Date(Date.now() - 86400000));
-  for (const dia of [...porDia.keys()].sort().reverse()) {
-    const items = porDia.get(dia).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
-    const head = document.createElement("div");
-    head.className = "day";
-    const nombre = dia === hoy ? "Hoy" : dia === ayer ? "Ayer"
-      : parseISO(dia).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "short" });
-    head.innerHTML = `<span></span><span>${esc(fmt(sum(items)))}</span>`;
-    head.firstChild.textContent = nombre;
-    if (!(soloHoy && dia === hoy)) list.appendChild(head);
-    for (const g of items) list.appendChild(itemGasto(g));
-  }
+  pintarDias(list, visibles, { sinCabecera: soloHoy ? hoy : null });
 }
 
 const MESES_GRAFICO = 6;
@@ -466,13 +519,7 @@ async function cargar() {
 async function cargarViajes() {
   try {
     state.viajes = await state.store.listViajes();
-    if (state.viajes.length) {
-      const from = state.viajes.reduce((m, v) => (v.inicio < m ? v.inicio : m), state.viajes[0].inicio);
-      const to = state.viajes.reduce((m, v) => (v.fin > m ? v.fin : m), state.viajes[0].fin);
-      state.gastosViaje = await state.store.listMonth(from, to);
-    } else {
-      state.gastosViaje = [];
-    }
+    state.gastosViaje = state.viajes.length ? await state.store.listConViaje() : [];
   } catch (e) {
     console.error(e);
     toast("No se han podido cargar los viajes");
@@ -561,38 +608,64 @@ function renderDashboard() {
 
 /* ---------- Pestaña Viajes ---------- */
 
+const GASTOS_VIAJE_VISIBLES = 5;
+
+function tarjetaViaje(v, s, vc) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "trip-card" + (vc?.id === v.id ? " current" : "") + (v.cerrado ? " closed" : "");
+  b.setAttribute("aria-current", String(state.viajeSel === v.id));
+  const estado = v.cerrado ? "" : s.estado === "en-curso" ? `<span class="live">En curso · día ${s.vividos} de ${s.dias}</span>`
+    : s.estado === "futuro" ? `<span class="small muted">Próximamente</span>` : "";
+  b.innerHTML = `${estado}
+    <span class="top-line"><span class="t-name"></span><span class="t-total">${esc(fmt(s.total))}</span></span>
+    <span class="small muted">${esc(rangoTexto(v.inicio, v.fin))} · ${esc(fmt(s.porDia))}/día</span>
+    <span class="stack"></span>`;
+  b.querySelector(".t-name").textContent = v.nombre;
+  pintarStack(b.querySelector(".stack"), porCategoria(s.gastos), s.total || 1);
+  b.addEventListener("click", () => {
+    if (state.viajeSel !== v.id) state.verTodoViaje = false;
+    state.viajeSel = v.id;
+    renderViajes();
+    if (!esEscritorio()) window.scrollTo(0, 0);
+  });
+  return b;
+}
+
 function renderViajes() {
   const lista = $("#trips-list");
   const detalle = $("#trip-detail");
   const stats = new Map(state.viajes.map((v) => [v.id, statsViaje(v)]));
   const totalViajes = [...stats.values()].reduce((s, x) => s + x.total, 0);
   const n = state.viajes.length;
+  const abiertos = viajesAbiertos();
+  const cerrados = state.viajes.filter((v) => v.cerrado);
   $("#trips-summary").textContent = n
     ? `${n} ${n === 1 ? "viaje" : "viajes"} · ${fmt(totalViajes)} en total`
     : "";
 
   if (state.viajeSel && !state.viajes.some((v) => v.id === state.viajeSel)) state.viajeSel = null;
   // En el ordenador siempre hay un viaje abierto: el que está en curso o el más reciente.
-  if (!state.viajeSel && esEscritorio() && n) state.viajeSel = (viajeEnCurso() || state.viajes[0]).id;
+  if (!state.viajeSel && esEscritorio() && n) state.viajeSel = (viajeEnCurso() || abiertos[0] || state.viajes[0]).id;
 
   lista.innerHTML = n ? "" : `<div class="card empty">Aún no tienes viajes. Crea uno con «Nuevo viaje» y sus gastos se sumarán solos.</div>`;
   const vc = viajeEnCurso();
-  for (const v of state.viajes) {
-    const s = stats.get(v.id);
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "trip-card" + (vc?.id === v.id ? " current" : "");
-    b.setAttribute("aria-current", String(state.viajeSel === v.id));
-    const estado = s.estado === "en-curso" ? `<span class="live">En curso · día ${s.vividos} de ${s.dias}</span>`
-      : s.estado === "futuro" ? `<span class="small muted">Próximamente</span>` : "";
-    b.innerHTML = `${estado}
-      <span class="top-line"><span class="t-name"></span><span class="t-total">${esc(fmt(s.total))}</span></span>
-      <span class="small muted">${esc(rangoTexto(v.inicio, v.fin))} · ${esc(fmt(s.porDia))}/día</span>
-      <span class="stack"></span>`;
-    b.querySelector(".t-name").textContent = v.nombre;
-    pintarStack(b.querySelector(".stack"), porCategoria(s.gastos), s.total || 1);
-    b.addEventListener("click", () => { state.viajeSel = v.id; renderViajes(); if (!esEscritorio()) window.scrollTo(0, 0); });
-    lista.appendChild(b);
+  if (n) {
+    lista.insertAdjacentHTML("beforeend", `<div class="label trips-label">Abiertos</div>`);
+    if (!abiertos.length) lista.insertAdjacentHTML("beforeend", `<div class="small muted trips-none">No tienes viajes abiertos.</div>`);
+  }
+  for (const v of abiertos) lista.appendChild(tarjetaViaje(v, stats.get(v.id), vc));
+  if (cerrados.length) {
+    const det = document.createElement("details");
+    det.className = "closed-trips";
+    det.open = state.verCerrados || cerrados.some((v) => v.id === state.viajeSel);
+    det.innerHTML = `<summary class="label">Cerrados · ${cerrados.length}</summary>`;
+    det.addEventListener("toggle", () => { state.verCerrados = det.open; });
+    const cont = document.createElement("div");
+    cont.className = "trips-list-inner";
+    for (const v of cerrados) cont.appendChild(tarjetaViaje(v, stats.get(v.id), vc));
+    det.appendChild(cont);
+    lista.appendChild(det);
   }
 
   const v = state.viajes.find((x) => x.id === state.viajeSel);
@@ -601,7 +674,7 @@ function renderViajes() {
   if (!v) return;
   const s = stats.get(v.id);
 
-  const estado = s.estado === "en-curso" ? ` · día ${s.vividos} de ${s.dias}` : s.estado === "futuro" ? " · próximamente" : ` · ${s.dias} ${s.dias === 1 ? "día" : "días"}`;
+  const estado = v.cerrado ? " · cerrado" : s.estado === "en-curso" ? ` · día ${s.vividos} de ${s.dias}` : s.estado === "futuro" ? " · próximamente" : ` · ${s.dias} ${s.dias === 1 ? "día" : "días"}`;
   detalle.innerHTML = `
     <div class="trip-actions">
       <button type="button" class="btn pill trip-back">${icono("M15 6l-6 6 6 6")}Viajes</button>
@@ -612,14 +685,21 @@ function renderViajes() {
       <div class="huge">${fmtGrande(s.total)}</div>
     </div>
     <div class="small muted">${esc(fmt(s.porDia))} por día · ${s.gastos.length} ${s.gastos.length === 1 ? "gasto" : "gastos"}</div>
+    <button type="button" class="btn wide trip-close" id="trip-close"></button>
     <div class="sub-grid">
       <div class="cat-rows"><div class="label">Por categoría</div></div>
       <div class="cat-rows"><div class="label">Por día</div><div class="day-bars"></div><div class="day-labels"></div></div>
     </div>
-    <div class="trip-gastos"><div class="label">Gastos del viaje</div></div>`;
+    <div class="trip-gastos"><div class="label">Gastos del viaje</div><div class="list"></div></div>`;
   detalle.querySelector("h2").textContent = v.nombre;
   detalle.querySelector(".trip-back").addEventListener("click", () => { state.viajeSel = null; renderViajes(); });
   detalle.querySelector("#trip-edit").addEventListener("click", () => abrirViaje(v));
+  const cerrar = detalle.querySelector("#trip-close");
+  cerrar.innerHTML = v.cerrado
+    ? `${icono("M4 12a8 8 0 1 0 3-6.2M4 4v4h4")}Reabrir viaje`
+    : `${icono(ICONO_CHECK)}Terminar viaje`;
+  cerrar.classList.toggle("reopen", v.cerrado);
+  cerrar.addEventListener("click", () => cambiarCerrado(v, !v.cerrado));
 
   const cats = detalle.querySelector(".cat-rows");
   const filas = porCategoria(s.gastos);
@@ -646,40 +726,33 @@ function renderViajes() {
     return `<span>${i % cada === 0 ? esc(txt) : ""}</span>`;
   }).join("");
 
-  // Gastos del viaje, con opción de quitarlos (no se borran, solo dejan de contar para el viaje)
-  const cont = detalle.querySelector(".trip-gastos");
+  // Gastos del viaje: los últimos y «Ver más» para el resto, como en Inicio.
+  const cont = detalle.querySelector(".trip-gastos .list");
   const ordenados = [...s.gastos].sort((a, b) => (b.fecha + b.created_at).localeCompare(a.fecha + a.created_at));
-  if (!ordenados.length) cont.insertAdjacentHTML("beforeend", `<div class="empty">Los gastos que apuntes entre la ida y la vuelta aparecerán aquí.</div>`);
-  for (const g of ordenados) {
-    const quitar = document.createElement("button");
-    quitar.type = "button";
-    quitar.className = "link-btn-sm";
-    quitar.textContent = "Quitar";
-    quitar.setAttribute("aria-label", "Quitar del viaje");
-    quitar.addEventListener("click", () => cambiarExcluido(v, g.id, true));
-    cont.appendChild(itemGasto(g, { conViaje: false, accion: quitar }));
+  if (!ordenados.length) {
+    cont.innerHTML = `<div class="empty">${v.cerrado ? "Este viaje no tiene gastos."
+      : "Los gastos que apuntes entre la ida y la vuelta aparecerán aquí. También puedes añadir cualquier gasto manteniéndolo pulsado."}</div>`;
   }
-  const fuera = state.gastosViaje.filter((g) => enFechas(v, g) && (v.excluidos || []).includes(g.id));
-  if (fuera.length) {
-    cont.insertAdjacentHTML("beforeend", `<div class="label" style="margin-top:16px">Quitados del viaje</div>`);
-    for (const g of fuera) {
-      const volver = document.createElement("button");
-      volver.type = "button";
-      volver.className = "link-btn-sm";
-      volver.textContent = "Volver a sumar";
-      volver.addEventListener("click", () => cambiarExcluido(v, g.id, false));
-      cont.appendChild(itemGasto(g, { conViaje: false, accion: volver }));
-    }
+  const visibles = state.verTodoViaje ? ordenados : ordenados.slice(0, GASTOS_VIAJE_VISIBLES);
+  pintarDias(cont, visibles, { conViaje: false });
+  const ocultos = ordenados.length - visibles.length;
+  if (ordenados.length > GASTOS_VIAJE_VISIBLES) {
+    const more = document.createElement("button");
+    more.type = "button";
+    more.className = "btn wide more-btn";
+    more.textContent = state.verTodoViaje ? "Ver menos" : `Ver más · ${ocultos} ${ocultos === 1 ? "gasto" : "gastos"} más`;
+    more.addEventListener("click", () => { state.verTodoViaje = !state.verTodoViaje; renderViajes(); });
+    detalle.querySelector(".trip-gastos").appendChild(more);
   }
 }
 
-async function cambiarExcluido(v, gastoId, quitar) {
-  const excluidos = quitar ? [...new Set([...(v.excluidos || []), gastoId])] : (v.excluidos || []).filter((x) => x !== gastoId);
+async function cambiarCerrado(v, cerrado) {
   try {
-    const nuevo = await state.store.updateViaje(v.id, { excluidos });
+    const nuevo = await state.store.updateViaje(v.id, { cerrado });
     state.viajes = state.viajes.map((x) => (x.id === v.id ? nuevo : x));
+    if (cerrado) state.verCerrados = true;
     pintar();
-    toast(quitar ? "Quitado del viaje" : "Vuelve a contar en el viaje");
+    toast(cerrado ? `Viaje a ${v.nombre} terminado` : `Viaje a ${v.nombre} reabierto`);
   } catch (e) {
     console.error(e);
     toast("No se ha podido guardar");
@@ -712,10 +785,11 @@ async function guardarViaje(ev) {
     const v = state.viajeEdit
       ? await state.store.updateViaje(state.viajeEdit.id, datos)
       : await state.store.addViaje(datos);
+    if (state.viajeSel !== v.id) state.verTodoViaje = false;
     state.viajeSel = v.id;
     $("#trip-sheet").close();
     toast(state.viajeEdit ? "Viaje guardado" : `Viaje a ${nombre} creado`);
-    await cargarViajes();
+    await Promise.all([cargar(), cargarViajes()]);
   } catch (e) {
     console.error(e);
     toast("No se ha podido guardar el viaje");
@@ -732,7 +806,7 @@ async function borrarViaje() {
     state.viajeSel = null;
     $("#trip-sheet").close();
     toast("Viaje borrado");
-    await cargarViajes();
+    await Promise.all([cargar(), cargarViajes()]);
   } catch (e) {
     console.error(e);
     toast("No se ha podido borrar");
@@ -780,8 +854,7 @@ async function borrar(g) {
   if (!confirm(`¿Borrar ${fmt(g.importe)} de ${catInfo(g.categoria).nombre}?`)) return;
   try {
     await state.store.remove(g.id);
-    state.rango = state.rango.filter((x) => x.id !== g.id);
-    state.gastosViaje = state.gastosViaje.filter((x) => x.id !== g.id);
+    quitarGasto(g.id);
     aplicarRango();
     pintar();
     toast("Gasto borrado");
@@ -791,24 +864,173 @@ async function borrar(g) {
   }
 }
 
-/* ---------- Añadir gasto ---------- */
-
-function pistaViaje() {
-  const fecha = $("#date").value || hoyISO();
-  const v = viajeDe({ fecha, id: null });
-  const p = $("#add-trip-hint");
-  p.classList.toggle("hidden", !v);
-  if (v) p.textContent = `Se sumará al viaje a ${v.nombre}.`;
+// Mantiene las listas en memoria al día tras crear, editar o borrar un gasto.
+function quitarGasto(id) {
+  state.rango = state.rango.filter((x) => x.id !== id);
+  state.gastosViaje = state.gastosViaje.filter((x) => x.id !== id);
+}
+function ponerGasto(g) {
+  quitarGasto(g.id);
+  const [from, to] = rangoActual();
+  if (g.fecha >= from && g.fecha <= to) state.rango.unshift(g);
+  if (g.viaje_id) state.gastosViaje.unshift(g);
 }
 
-function abrirAñadir() {
-  // La fecha vuelve a ser hoy cada vez, aunque la app lleve días abierta.
-  $("#date").value = hoyISO();
-  $("#amount").value = "";
-  $("#note").value = "";
+/* ---------- Menú del gasto (mantener pulsado, como en iPhone) ---------- */
+
+// Mantener pulsado medio segundo abre el menú. En el ordenador también con clic derecho.
+function mantenerPulsado(el, fn) {
+  let timer = null, x0 = 0, y0 = 0;
+  const cancelar = () => { clearTimeout(timer); timer = null; el.classList.remove("pressing"); };
+  el.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0 || e.target.closest("button")) return;
+    x0 = e.clientX; y0 = e.clientY;
+    el.classList.add("pressing");
+    timer = setTimeout(() => { timer = null; el.classList.remove("pressing"); fn(); }, 450);
+  });
+  el.addEventListener("pointermove", (e) => {
+    if (timer && Math.hypot(e.clientX - x0, e.clientY - y0) > 8) cancelar();
+  });
+  for (const ev of ["pointerup", "pointercancel", "pointerleave"]) el.addEventListener(ev, cancelar);
+  el.addEventListener("contextmenu", (e) => { e.preventDefault(); cancelar(); fn(); });
+}
+
+let menuAbierto = null;
+
+function cerrarMenuGasto() {
+  if (!menuAbierto) return;
+  const m = menuAbierto;
+  menuAbierto = null;
+  m.classList.remove("show");
+  setTimeout(() => m.remove(), 180);
+}
+
+function filaMenu(texto, icon, fn, { peligro = false, activo = false } = {}) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "ctx-row" + (peligro ? " danger" : "") + (activo ? " active" : "");
+  b.innerHTML = `<span></span>${icon ? icono(icon) : ""}`;
+  b.firstChild.textContent = texto;
+  b.addEventListener("click", fn);
+  return b;
+}
+
+function abrirMenuGasto(g, el) {
+  if (menuAbierto) return;
+  const rect = el.getBoundingClientRect();
+  const capa = document.createElement("div");
+  capa.className = "ctx-layer";
+  capa.innerHTML = `<div class="ctx-preview"></div><div class="ctx-menu" role="menu"></div>`;
+  const preview = capa.querySelector(".ctx-preview");
+  const copia = el.cloneNode(true);
+  copia.querySelector(".more")?.remove();
+  preview.appendChild(copia);
+  const menu = capa.querySelector(".ctx-menu");
+  document.body.appendChild(capa);
+  menuAbierto = capa;
+
+  const v = viajeDe(g);
+  const principal = () => {
+    menu.innerHTML = "";
+    menu.append(
+      filaMenu("Editar", ICONO_EDITAR, () => { cerrarMenuGasto(); abrirAñadir(g); }),
+      filaMenu(v ? "Cambiar de viaje" : "Añadir a viaje", ICONO_AVION, viajes),
+      filaMenu("Eliminar", ICONO_PAPELERA, () => { cerrarMenuGasto(); borrar(g); }, { peligro: true }),
+    );
+    if (v) {
+      const info = document.createElement("div");
+      info.className = "ctx-info";
+      info.textContent = `En el viaje a ${v.nombre}`;
+      menu.prepend(info);
+    }
+    colocar();
+  };
+  const viajes = () => {
+    menu.innerHTML = "";
+    menu.append(filaMenu("Atrás", "M15 6l-6 6 6 6", principal));
+    menu.firstChild.classList.add("back");
+    const abiertos = viajesAbiertos();
+    if (!abiertos.length) {
+      const info = document.createElement("div");
+      info.className = "ctx-info";
+      info.textContent = "No tienes viajes abiertos";
+      menu.append(info);
+    }
+    for (const x of abiertos) {
+      menu.append(filaMenu(x.nombre, x.id === g.viaje_id ? ICONO_CHECK : null,
+        () => { cerrarMenuGasto(); if (x.id !== g.viaje_id) moverAViaje(g, x); }, { activo: x.id === g.viaje_id }));
+    }
+    if (v) menu.append(filaMenu("Quitar del viaje", ICONO_X, () => { cerrarMenuGasto(); moverAViaje(g, null); }, { peligro: true }));
+    colocar();
+  };
+
+  // La copia del gasto queda donde estaba y el menú debajo; si no cabe, encima.
+  function colocar() {
+    const margen = 12, hueco = 8;
+    const alto = window.innerHeight;
+    const hMenu = menu.offsetHeight;
+    const ancho = Math.min(rect.width, window.innerWidth - margen * 2);
+    let top = rect.top;
+    preview.style.left = `${Math.max(margen, rect.left)}px`;
+    preview.style.width = `${ancho}px`;
+    const debajo = top + rect.height + hueco + hMenu <= alto - margen;
+    const encima = top - hueco - hMenu >= margen;
+    if (!debajo && !encima) top = Math.max(margen, alto - margen - hMenu - hueco - rect.height);
+    preview.style.top = `${top}px`;
+    const menuTop = debajo || !encima ? top + rect.height + hueco : top - hueco - hMenu;
+    menu.style.top = `${menuTop}px`;
+    const izquierda = rect.left + rect.width / 2 < window.innerWidth / 2;
+    menu.style.left = izquierda ? `${Math.max(margen, rect.left)}px` : "auto";
+    menu.style.right = izquierda ? "auto" : `${Math.max(margen, window.innerWidth - rect.right)}px`;
+  }
+
+  principal();
+  capa.addEventListener("click", (e) => { if (e.target === capa || e.target.closest(".ctx-preview")) cerrarMenuGasto(); });
+  requestAnimationFrame(() => capa.classList.add("show"));
+}
+
+async function moverAViaje(g, v) {
+  try {
+    const nuevo = await state.store.update(g.id, { viaje_id: v ? v.id : null });
+    ponerGasto(nuevo);
+    aplicarRango();
+    pintar();
+    toast(v ? `Añadido al viaje a ${v.nombre}` : "Quitado del viaje");
+  } catch (e) {
+    console.error(e);
+    toast("No se ha podido guardar");
+  }
+}
+
+/* ---------- Añadir o editar gasto ---------- */
+
+function pistaViaje() {
+  const p = $("#add-trip-hint");
+  const g = state.gastoEdit;
+  const v = g ? viajeDe(g) : viajeAuto($("#date").value || hoyISO());
+  p.classList.toggle("hidden", !v);
+  if (v) p.textContent = g ? `En el viaje a ${v.nombre}.` : `Se sumará al viaje a ${v.nombre}.`;
+}
+
+function elegirCategoria(id) {
+  state.categoria = id;
+  $$("#cat-grid .cat").forEach((el) => el.setAttribute("aria-checked", String(el.dataset.cat === id)));
+}
+
+function abrirAñadir(g = null) {
+  // Al crear, la fecha vuelve a ser hoy cada vez, aunque la app lleve días abierta.
+  state.gastoEdit = g && g.id ? g : null;
+  const ed = state.gastoEdit;
+  $("#add-title").textContent = ed ? "Editar gasto" : "Nuevo gasto";
+  $("#add-submit").textContent = ed ? "Guardar cambios" : "Añadir gasto";
+  $("#date").value = ed ? ed.fecha : hoyISO();
+  $("#amount").value = ed ? String(ed.importe).replace(".", ",") : "";
+  $("#note").value = ed ? ed.nota || "" : "";
+  if (ed) elegirCategoria(ed.categoria);
+  else elegirCategoria(safeStorage(() => localStorage.getItem("gastos-erasmus:ultima-cat"), null) || state.categoria);
   pistaViaje();
   $("#add-sheet").showModal();
-  $("#amount").focus();
+  if (!ed) $("#amount").focus();
 }
 
 async function añadir(ev) {
@@ -821,18 +1043,17 @@ async function añadir(ev) {
     nota: $("#note").value.trim() || null,
     fecha: $("#date").value || hoyISO(),
   };
-  const btn = ev.submitter || $("#add-form button[type=submit]");
+  const ed = state.gastoEdit;
+  const btn = ev.submitter || $("#add-submit");
   btn.disabled = true;
   try {
-    const nuevo = await state.store.add(gasto);
-    const [from, to] = rangoActual();
-    if (nuevo.fecha >= from && nuevo.fecha <= to) state.rango.unshift(nuevo);
-    if (state.viajes.some((v) => enFechas(v, nuevo))) state.gastosViaje.unshift(nuevo);
+    const nuevo = ed ? await state.store.update(ed.id, gasto) : await state.store.add(gasto);
+    ponerGasto(nuevo);
     aplicarRango();
     pintar();
     $("#add-sheet").close();
     const v = viajeDe(nuevo);
-    toast(`Apuntado: ${fmt(importe)} en ${catInfo(gasto.categoria).nombre}${v ? ` · ${v.nombre}` : ""}`);
+    toast(ed ? "Gasto guardado" : `Apuntado: ${fmt(importe)} en ${catInfo(gasto.categoria).nombre}${v ? ` · ${v.nombre}` : ""}`);
   } catch (e) {
     console.error(e);
     toast("No se ha podido guardar");
@@ -1078,7 +1299,9 @@ function init() {
   if (location.hash === "#ajustes") state.vista = "ajustes";
 
   $$("[data-view]").forEach((b) => b.addEventListener("click", () => cambiarVista(b.dataset.view)));
-  $$("[data-add]").forEach((b) => b.addEventListener("click", abrirAñadir));
+  $$("[data-add]").forEach((b) => b.addEventListener("click", () => abrirAñadir()));
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") cerrarMenuGasto(); });
+  window.addEventListener("scroll", cerrarMenuGasto, { passive: true });
   $$("[data-month]").forEach((b) => b.addEventListener("click", () => cambiarMes(Number(b.dataset.month))));
   $$("[data-picker]").forEach((b) => b.addEventListener("click", abrirSelector));
   $$("[data-year]").forEach((b) => b.addEventListener("click", () => { state.pickerYear += Number(b.dataset.year); pintarSelector(); }));
