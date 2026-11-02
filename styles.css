@@ -169,8 +169,12 @@ button { font: inherit; color: inherit; }
 .item .meta { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .item .meta .trip { color: var(--accent); }
 .item .amt { font: 500 16px var(--num); white-space: nowrap; }
-.item .del { background: none; border: 0; color: var(--muted); padding: 8px; margin-right: -8px; cursor: pointer; display: grid; place-items: center; }
-.item .del .ic { width: 16px; height: 16px; }
+.item { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; transition: transform .2s, opacity .2s; }
+.item.pressing { transform: scale(.97); opacity: .8; }
+.item .more { display: none; background: none; border: 0; color: var(--muted); padding: 8px; margin-right: -8px; cursor: pointer; place-items: center; border-radius: 10px; }
+.item .more .ic { width: 18px; height: 18px; stroke-width: 3; }
+.item .more:hover { background: var(--raised); color: var(--text); }
+@media (hover: hover) and (pointer: fine) { .item .more { display: grid; } }
 .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 16px 0; }
 
 /* ---------- Viajes ---------- */
@@ -219,7 +223,21 @@ button { font: inherit; color: inherit; }
 .day-labels { display: flex; gap: 4px; font-size: 11px; color: var(--muted); }
 .day-labels span { flex: 1; text-align: center; white-space: nowrap; }
 .sub-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 24px; }
-.link-btn-sm { background: none; border: 0; color: var(--muted); font-size: 12px; padding: 8px; cursor: pointer; text-decoration: underline; }
+.trips-label { margin: 2px 2px -2px; }
+.trips-none { padding: 4px 2px 8px; }
+.closed-trips { display: flex; flex-direction: column; margin-top: 10px; }
+.closed-trips summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px; padding: 6px 2px; }
+.closed-trips summary::-webkit-details-marker { display: none; }
+.closed-trips summary::after { content: "›"; font-size: 18px; line-height: 1; transition: transform .2s; }
+.closed-trips[open] summary::after { transform: rotate(90deg); }
+.trips-list-inner { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.trip-card.closed .t-name, .trip-card.closed .t-total { color: var(--text-2); }
+.trip-card.closed .stack { opacity: .5; }
+.trip-gastos .list > .day:first-child { border-top: 0; }
+.trip-close { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: -8px; }
+.trip-close .ic { width: 18px; height: 18px; stroke-width: 2.2; }
+.trip-close.reopen { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+@media (min-width: 900px) { .trip-close { width: auto; align-self: flex-start; padding: 10px 18px; } }
 .trip-hint { color: var(--accent); margin: 0; }
 
 /* ---------- Botones y formularios ---------- */
@@ -441,3 +459,38 @@ details.manual summary::-webkit-details-marker { display: none; }
 }
 .picker-months button.now { border-color: var(--muted); color: var(--text); }
 .picker-months button[aria-current="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+
+/* ---------- Menú del gasto (estilo iPhone al mantener pulsado) ---------- */
+.ctx-layer {
+  position: fixed; inset: 0; z-index: 100; background: rgba(0, 0, 0, .35);
+  -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%);
+  opacity: 0; transition: opacity .18s;
+}
+.ctx-layer.show { opacity: 1; }
+.ctx-preview {
+  position: fixed; background: var(--raised); border-radius: 16px; padding: 0 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .5); transform: scale(.96); transition: transform .25s cubic-bezier(.2, .9, .3, 1.3);
+}
+.ctx-layer.show .ctx-preview { transform: scale(1.03); }
+.ctx-preview .item { border-top: 0; }
+.ctx-menu {
+  position: fixed; width: 250px; max-width: calc(100vw - 24px); max-height: 60vh; overflow-y: auto;
+  background: rgba(40, 40, 46, .82); -webkit-backdrop-filter: blur(30px); backdrop-filter: blur(30px);
+  border-radius: 14px; box-shadow: 0 16px 50px rgba(0, 0, 0, .55);
+  transform: scale(.85); opacity: 0; transform-origin: top center;
+  transition: transform .25s cubic-bezier(.2, .9, .3, 1.2), opacity .18s;
+}
+.ctx-layer.show .ctx-menu { transform: scale(1); opacity: 1; }
+.ctx-row {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 13px 16px; background: none; border: 0; color: var(--text); font: inherit; font-size: 16px; text-align: left; cursor: pointer;
+}
+.ctx-row + .ctx-row, .ctx-info + .ctx-row { border-top: .5px solid rgba(255, 255, 255, .12); }
+.ctx-row span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ctx-row .ic { width: 19px; height: 19px; flex: 0 0 19px; }
+.ctx-row:active, .ctx-row:hover { background: rgba(255, 255, 255, .08); }
+.ctx-row.danger { color: var(--danger); }
+.ctx-row.active { color: var(--accent); }
+.ctx-row.back { flex-direction: row-reverse; justify-content: flex-end; color: var(--text-2); border-bottom: 6px solid rgba(0, 0, 0, .25); }
+.ctx-row.back + .ctx-row { border-top: 0; }
+.ctx-info { padding: 10px 16px; font-size: 13px; color: var(--muted); }
