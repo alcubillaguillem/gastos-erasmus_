@@ -13,10 +13,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Gastos">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" href="icons/icon.svg?v=20" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=20">
+  <link rel="icon" href="icons/icon.svg?v=21" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=21">
   <link rel="preload" href="vendor/fonts/space-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=20">
+  <link rel="stylesheet" href="styles.css?v=21">
 </head>
 <body>
   <!-- Instrucciones para instalar la app (solo si se abre desde el navegador) -->
@@ -34,7 +34,7 @@
   <!-- Pantalla de acceso (solo si hay Supabase configurado) -->
   <section id="login" class="screen hidden">
     <div class="login-card">
-      <img src="icons/icon.svg?v=20" alt="" width="72" height="72" class="login-logo">
+      <img src="icons/icon.svg?v=21" alt="" width="72" height="72" class="login-logo">
       <h1>Gastos Erasmus</h1>
       <p class="muted">Entra para sincronizar tus gastos entre el móvil y el ordenador.</p>
       <button type="button" id="google-btn" class="btn google wide">
@@ -56,7 +56,7 @@
   <div id="shell" class="shell hidden">
     <aside class="sidebar">
       <div class="brand">
-        <img src="icons/icon.svg?v=20" alt="" width="34" height="34">
+        <img src="icons/icon.svg?v=21" alt="" width="34" height="34">
         <span>Gastos Erasmus</span>
       </div>
       <nav class="side-nav" aria-label="Secciones">
@@ -183,6 +183,15 @@
           </div>
         </section>
 
+        <section class="card cats-card">
+          <div class="cats-head">
+            <h2>Categorías</h2>
+            <button type="button" id="cat-new" class="btn pill small-pill"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nueva</button>
+          </div>
+          <p class="small muted">Toca una para cambiarle el nombre, el color o el icono. Las mismas aparecen en el atajo del iPhone.</p>
+          <div id="cats-admin" class="cats-admin"></div>
+        </section>
+
         <nav class="card menu">
           <button type="button" id="open-shortcuts" class="menu-row hidden">
             <span>Apuntar gastos desde el Centro de control</span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
@@ -224,6 +233,26 @@
       </div>
       <p id="add-trip-hint" class="small trip-hint hidden"></p>
       <button type="submit" id="add-submit" class="btn primary wide big-btn">Añadir gasto</button>
+    </form>
+  </dialog>
+
+  <!-- Hoja para crear o editar una categoría -->
+  <dialog id="cat-sheet" class="sheet-dialog" aria-labelledby="cat-title">
+    <form id="cat-form" class="sheet" autocomplete="off">
+      <div class="sheet-head">
+        <h2 id="cat-title">Nueva categoría</h2>
+        <button type="button" class="round-btn" data-close aria-label="Cerrar"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      </div>
+      <div class="cat-name-row">
+        <span id="cat-preview" class="cat-ic big" aria-hidden="true"></span>
+        <input id="cat-name" type="text" placeholder="Nombre (p. ej. Gimnasio)" maxlength="24" aria-label="Nombre de la categoría" required>
+      </div>
+      <div class="label">Color</div>
+      <div id="cat-colors" class="cat-colors" role="radiogroup" aria-label="Color"></div>
+      <div class="label">Icono</div>
+      <div id="cat-icons" class="cat-icons" role="radiogroup" aria-label="Icono"></div>
+      <button type="submit" class="btn primary wide big-btn">Guardar</button>
+      <button type="button" id="cat-delete" class="btn danger wide hidden">Borrar categoría</button>
     </form>
   </dialog>
 
@@ -305,6 +334,7 @@
       <h3>Tus 3 datos</h3>
       <p class="small muted">El token es tu llave personal: no se lo pases a nadie.</p>
       <div class="copy-field"><label for="sc-url">① Dirección</label><div class="copy-row"><input id="sc-url" readonly><button type="button" class="btn copy-btn" data-copy="#sc-url">Copiar</button></div></div>
+      <div class="copy-field"><label for="sc-url-cats">① bis · Dirección de categorías</label><div class="copy-row"><input id="sc-url-cats" readonly><button type="button" class="btn copy-btn" data-copy="#sc-url-cats">Copiar</button></div></div>
       <div class="copy-field"><label for="sc-key">② Clave</label><div class="copy-row"><input id="sc-key" readonly><button type="button" class="btn copy-btn" data-copy="#sc-key">Copiar</button></div></div>
       <div class="copy-field"><label for="sc-token">③ Token</label><div class="copy-row"><input id="sc-token" readonly><button type="button" class="btn copy-btn" data-copy="#sc-token">Copiar</button></div></div>
     </div>
@@ -327,11 +357,12 @@
 
         <li class="group">Pregunta 2 · Tipo de gasto</li>
         <li>
-          Añade <strong>Lista</strong> <span class="search">🔍 busca «lista»</span> (la que solo dice «Lista»).<br>
-          Cambia <em>Uno</em> y <em>Dos</em> y toca <em>Añadir nuevo elemento</em> hasta tener estas 10, escritas tal cual:
-          <div class="cats-list">Comida · Tabaco · Alcohol · Ocio · Viajes · Transporte · Casa · Compras · Estudios · Otros</div>
+          Añade <strong>Obtener contenido de URL</strong> <span class="search">🔍 busca «URL»</span> y pega la <strong>① bis · Dirección de categorías</strong>.<br>
+          Toca la flecha <strong>›</strong>: <strong>Método</strong> POST, encabezado <code>apikey</code> con la <strong>② Clave</strong> y cuerpo <strong>JSON</strong> con un solo campo de Texto: clave <code>p_token</code>, valor el <strong>③ Token</strong>.
         </li>
-        <li>Añade la acción para <strong>elegir de la lista</strong> <span class="search">🔍 busca «elegir»</span>. Toca la flecha <strong>›</strong> y en <em>Petición</em> escribe <strong>Tipo de gasto</strong>.</li>
+        <li>Añade <strong>Obtener valor del diccionario</strong> <span class="search">🔍 busca «diccionario»</span>. Toca <em>Clave</em> y escribe <code>categorias</code>.</li>
+        <li>Añade la acción para <strong>elegir de la lista</strong> <span class="search">🔍 busca «elegir»</span>; tiene que usar la burbuja <strong>Valor del diccionario</strong>. Toca la flecha <strong>›</strong> y en <em>Petición</em> escribe <strong>Tipo de gasto</strong>.<br>
+          <span class="small muted">Así el atajo siempre muestra tus categorías: si creas o cambias una en la app, sale al momento.</span></li>
 
         <li class="group">Pregunta 3 · Info adicional</li>
         <li>
@@ -384,9 +415,9 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="config.js?v=20"></script>
+  <script src="config.js?v=21"></script>
   <script src="vendor/supabase-js-2.117.3.js"></script>
-  <script src="charts.js?v=20"></script>
-  <script src="app.js?v=20"></script>
+  <script src="charts.js?v=21"></script>
+  <script src="app.js?v=21"></script>
 </body>
 </html>
