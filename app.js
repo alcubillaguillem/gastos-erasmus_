@@ -9,21 +9,57 @@ window.addEventListener("error", (e) => {
   setTimeout(() => t.classList.remove("show"), 6000);
 });
 
-// Iconos de línea (24×24) y color de cada categoría en las barras y la leyenda.
-const CATEGORIAS = [
-  { id: "comida", nombre: "Comida", color: "#7dd3fc", icono: "M7 3v8M5 3v4a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 1-3 3-3 6v3h3v9" },
-  { id: "tabaco", nombre: "Tabaco", color: "#fdba74", icono: "M3 14h14v4H3zM20 14v4M17 10c0-2 3-2 3-4.5" },
-  { id: "alcohol", nombre: "Alcohol", color: "#f9a8d4", icono: "M8 3h8l-1 8a3 3 0 0 1-6 0zM12 14v7M9 21h6" },
-  { id: "ocio", nombre: "Ocio", color: "#c4b5fd", icono: "M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" },
-  { id: "viajes", nombre: "Viajes", color: "#c5f04a", icono: "M22 2 11 13M22 2l-7 20-4-9-9-4z" },
-  { id: "transporte", nombre: "Transporte", color: "#d4d4d8", icono: "M7 3h10a2 2 0 0 1 2 2v13H5V5a2 2 0 0 1 2-2zM5 11h14M8 18v3M16 18v3" },
-  { id: "casa", nombre: "Casa", color: "#fde68a", icono: "M4 11 12 4l8 7v9h-5v-6H9v6H4z" },
-  { id: "compras", nombre: "Compras", color: "#86efac", icono: "M6 8h12l-1 13H7zM9 8V6a3 3 0 0 1 6 0v2" },
-  { id: "estudios", nombre: "Estudios", color: "#93c5fd", icono: "M4 19V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2zM8 7h8" },
-  { id: "otros", nombre: "Otros", color: "#a1a1aa", icono: "M6 12h.01M12 12h.01M18 12h.01" },
-];
-const CAT = Object.fromEntries(CATEGORIAS.map((c) => [c.id, c]));
-const catInfo = (id) => CAT[id] || CAT.otros;
+// Iconos de línea (24×24) que se pueden elegir para una categoría.
+const ICONOS = {
+  comida: "M7 3v8M5 3v4a2 2 0 0 0 4 0V3M7 11v10M17 3c-2 1-3 3-3 6v3h3v9",
+  tabaco: "M3 14h14v4H3zM20 14v4M17 10c0-2 3-2 3-4.5",
+  alcohol: "M8 3h8l-1 8a3 3 0 0 1-6 0zM12 14v7M9 21h6",
+  ocio: "M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z",
+  viajes: "M22 2 11 13M22 2l-7 20-4-9-9-4z",
+  transporte: "M7 3h10a2 2 0 0 1 2 2v13H5V5a2 2 0 0 1 2-2zM5 11h14M8 18v3M16 18v3",
+  casa: "M4 11 12 4l8 7v9h-5v-6H9v6H4z",
+  compras: "M6 8h12l-1 13H7zM9 8V6a3 3 0 0 1 6 0v2",
+  estudios: "M4 19V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2zM8 7h8",
+  cafe: "M4 9h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM16 10h2a2 2 0 0 1 0 4h-2M8 3v3M12 3v3",
+  fiesta: "M4 4h16l-8 9zM12 13v7M8 20h8",
+  gimnasio: "M6 7v10M18 7v10M3 10v4M21 10v4M6 12h12",
+  deporte: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18",
+  salud: "M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z",
+  belleza: "M6 6a2.5 2.5 0 1 0 0 .01M6 18a2.5 2.5 0 1 0 0 .01M8 7.5 20 19M8 16.5 20 5",
+  ropa: "M8 3 3 6l2 5 3-1v11h8V10l3 1 2-5-5-3a4 4 0 0 1-8 0z",
+  regalo: "M4 11h16v10H4zM3 7h18v4H3zM12 7v14M12 7c-2-4-6-3-5 0M12 7c2-4 6-3 5 0",
+  movil: "M8 2h8a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zM11 18h2",
+  internet: "M2 9a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01",
+  coche: "M5 16h14v-4l-2-5H7l-2 5zM5 12h14M7 16v3M17 16v3M8 14h.01M16 14h.01",
+  musica: "M9 18V5l11-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM20 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z",
+  cine: "M4 5h16v14H4zM8 5v14M16 5v14M4 9h4M4 15h4M16 9h4M16 15h4",
+  juegos: "M6 9h12a4 4 0 0 1 0 8c-2 0-3-2-6-2s-4 2-6 2a4 4 0 0 1 0-8zM8 11v4M6 13h4M16 12h.01M18 14h.01",
+  foto: "M4 8h3l2-3h6l2 3h3v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z",
+  dinero: "M17 6a7 7 0 1 0 0 12M4 10h9M4 14h9",
+  otros: "M6 12h.01M12 12h.01M18 12h.01",
+};
+const COLORES = ["#7dd3fc", "#93c5fd", "#c4b5fd", "#f9a8d4", "#fca5a5", "#fdba74",
+  "#fde68a", "#c5f04a", "#86efac", "#5eead4", "#d4d4d8", "#a1a1aa"];
+// Categorías con las que empieza cada cuenta (en Supabase las crea la base de datos).
+const CATEGORIAS_INICIALES = [
+  ["comida", "Comida", "#7dd3fc"], ["tabaco", "Tabaco", "#fdba74"], ["alcohol", "Alcohol", "#f9a8d4"],
+  ["ocio", "Ocio", "#c4b5fd"], ["viajes", "Viajes", "#c5f04a"], ["transporte", "Transporte", "#d4d4d8"],
+  ["casa", "Casa", "#fde68a"], ["compras", "Compras", "#86efac"], ["estudios", "Estudios", "#93c5fd"],
+  ["otros", "Otros", "#a1a1aa"],
+].map(([clave, nombre, color], orden) => ({ clave, nombre, color, icono: clave, orden }));
+const MAX_CATEGORIAS = 40;
+
+// Nombre, color e icono de una categoría a partir de la clave guardada en el gasto.
+function catInfo(clave) {
+  const c = state.categorias.find((x) => x.clave === clave);
+  if (!c) return { id: clave, nombre: clave ? clave.charAt(0).toUpperCase() + clave.slice(1) : "Otros", color: "#a1a1aa", icono: ICONOS.otros };
+  return {
+    id: c.clave,
+    nombre: c.nombre,
+    color: /^#[0-9a-f]{6}$/i.test(c.color) ? c.color : "#a1a1aa",
+    icono: ICONOS[c.icono] || ICONOS.otros,
+  };
+}
 const icono = (d, extra = "") => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"${extra}><path d="${d}"/></svg>`;
 const ICONO_X = "M6 6l12 12M18 6 6 18";
 const ICONO_MAS = "M5 12h.01M12 12h.01M19 12h.01";
@@ -89,7 +125,11 @@ const esEscritorio = () => window.matchMedia("(min-width: 900px)").matches;
 /* ---------- Almacenes de datos ---------- */
 
 class LocalStore {
-  constructor() { this.key = "gastos-erasmus:gastos"; this.keyViajes = "gastos-erasmus:viajes"; }
+  constructor() {
+    this.key = "gastos-erasmus:gastos";
+    this.keyViajes = "gastos-erasmus:viajes";
+    this.keyCats = "gastos-erasmus:categorias";
+  }
   all() { return safeStorage(() => JSON.parse(localStorage.getItem(this.key)) || [], []); }
   save(list) { safeStorage(() => localStorage.setItem(this.key, JSON.stringify(list))); }
   async listMonth(from, to) {
@@ -138,6 +178,29 @@ class LocalStore {
   async removeViaje(id) {
     this.viajesSave(this.viajesAll().filter((v) => v.id !== id));
     this.save(this.all().map((g) => (g.viaje_id === id ? { ...g, viaje_id: null } : g)));
+  }
+
+  catsAll() { return safeStorage(() => JSON.parse(localStorage.getItem(this.keyCats)) || [], []); }
+  catsSave(list) { safeStorage(() => localStorage.setItem(this.keyCats, JSON.stringify(list))); }
+  async listCategorias() {
+    if (!this.catsAll().length) {
+      this.catsSave(CATEGORIAS_INICIALES.map((c) => ({ ...c, id: crypto.randomUUID(), created_at: new Date().toISOString() })));
+    }
+    return this.catsAll().sort((a, b) => a.orden - b.orden);
+  }
+  async addCategoria(c) {
+    const item = { ...c, id: crypto.randomUUID(), created_at: new Date().toISOString() };
+    this.catsSave([...this.catsAll(), item]);
+    return item;
+  }
+  async updateCategoria(id, patch) {
+    const list = this.catsAll().map((c) => (c.id === id ? { ...c, ...patch } : c));
+    this.catsSave(list);
+    return list.find((c) => c.id === id);
+  }
+  async removeCategoria(id) { this.catsSave(this.catsAll().filter((c) => c.id !== id)); }
+  async recategorizar(de, a) {
+    this.save(this.all().map((g) => (g.categoria === de ? { ...g, categoria: a } : g)));
   }
 }
 
@@ -201,6 +264,37 @@ class SupabaseStore {
     const { error } = await this.sb.from("viajes").delete().eq("id", id);
     if (error) throw error;
   }
+  // Una cuenta nueva empieza con las 10 categorías de siempre (las crea la base de datos).
+  async listCategorias() {
+    const leer = () => this.sb.from("categorias").select("*").order("orden").order("created_at");
+    let { data, error } = await leer();
+    if (error) throw error;
+    if (!data.length) {
+      const r = await this.sb.rpc("crear_categorias_iniciales");
+      if (r.error) throw r.error;
+      ({ data, error } = await leer());
+      if (error) throw error;
+    }
+    return data;
+  }
+  async addCategoria(c) {
+    const { data, error } = await this.sb.from("categorias").insert(c).select().single();
+    if (error) throw error;
+    return data;
+  }
+  async updateCategoria(id, patch) {
+    const { data, error } = await this.sb.from("categorias").update(patch).eq("id", id).select().single();
+    if (error) throw error;
+    return data;
+  }
+  async removeCategoria(id) {
+    const { error } = await this.sb.from("categorias").delete().eq("id", id);
+    if (error) throw error;
+  }
+  async recategorizar(de, a) {
+    const { error } = await this.sb.from("gastos").update({ categoria: a }).eq("categoria", de);
+    if (error) throw error;
+  }
 }
 
 /* ---------- Estado ---------- */
@@ -230,6 +324,8 @@ const state = {
   year: new Date().getFullYear(),
   month: new Date().getMonth(),
   categoria: safeStorage(() => localStorage.getItem("gastos-erasmus:ultima-cat"), null) || "comida",
+  categorias: [],    // categorías del usuario, en su orden
+  catEdit: null,     // categoría que se está editando en la hoja
   gastos: [],        // gastos del mes seleccionado
   rango: [],         // gastos de los últimos 6 meses (para los gráficos)
   viajes: [],        // viajes, del más reciente al más antiguo
@@ -296,14 +392,16 @@ function toast(msg) {
 function renderCategoryPicker() {
   const grid = $("#cat-grid");
   grid.innerHTML = "";
-  for (const c of CATEGORIAS) {
+  for (const cat of state.categorias) {
+    const c = catInfo(cat.clave);
     const b = document.createElement("button");
     b.type = "button";
     b.className = "cat";
     b.setAttribute("role", "radio");
     b.dataset.cat = c.id;
     b.setAttribute("aria-checked", String(c.id === state.categoria));
-    b.innerHTML = `${icono(c.icono, ` style="color:${c.color}"`)}<span>${c.nombre}</span>`;
+    b.innerHTML = `${icono(c.icono, ` style="color:${c.color}"`)}<span></span>`;
+    b.querySelector("span").textContent = c.nombre;
     b.addEventListener("click", () => {
       elegirCategoria(c.id);
       if (!state.gastoEdit) safeStorage(() => localStorage.setItem("gastos-erasmus:ultima-cat", c.id));
@@ -426,7 +524,7 @@ function render() {
   pintarStack($("#cat-stack"), filas, m.total);
   $("#cat-legend").innerHTML = filas.map(([id, v]) => {
     const c = catInfo(id);
-    return `<div class="legend-row"><span class="dot" style="background:${c.color}"></span><span class="name">${c.nombre}</span><span>${esc(fmt(v))}</span></div>`;
+    return `<div class="legend-row"><span class="dot" style="background:${c.color}"></span><span class="name">${esc(c.nombre)}</span><span>${esc(fmt(v))}</span></div>`;
   }).join("");
 
   // Datos rápidos
@@ -706,7 +804,7 @@ function renderViajes() {
   if (!filas.length) cats.insertAdjacentHTML("beforeend", `<div class="empty">Sin gastos todavía</div>`);
   for (const [id, imp] of filas) {
     const c = catInfo(id);
-    cats.insertAdjacentHTML("beforeend", `<div class="cat-row"><div class="row-top"><span>${c.nombre}</span><span>${esc(fmt(imp))}</span></div>
+    cats.insertAdjacentHTML("beforeend", `<div class="cat-row"><div class="row-top"><span>${esc(c.nombre)}</span><span>${esc(fmt(imp))}</span></div>
       <div class="bar"><div class="fill" style="width:${(imp / s.total) * 100}%;background:${c.color}"></div></div></div>`);
   }
 
@@ -810,6 +908,164 @@ async function borrarViaje() {
   } catch (e) {
     console.error(e);
     toast("No se ha podido borrar");
+  }
+}
+
+/* ---------- Categorías del usuario ---------- */
+
+async function cargarCategorias() {
+  try {
+    state.categorias = await state.store.listCategorias();
+  } catch (e) {
+    console.error(e);
+    toast("No se han podido cargar las categorías");
+  }
+  renderCategoryPicker();
+  pintarCategoriasAjustes();
+}
+
+function pintarCategoriasAjustes() {
+  const cont = $("#cats-admin");
+  cont.innerHTML = "";
+  const n = state.categorias.length;
+  state.categorias.forEach((cat, i) => {
+    const c = catInfo(cat.clave);
+    const row = document.createElement("div");
+    row.className = "cat-admin-row";
+    row.innerHTML = `
+      <button type="button" class="cat-admin-main"><span class="cat-ic" style="color:${c.color}">${icono(c.icono)}</span><span class="cat-admin-name"></span></button>
+      <button type="button" class="round-btn sm" data-dir="-1" aria-label="Subir"${i === 0 ? " disabled" : ""}>${icono("M6 15l6-6 6 6")}</button>
+      <button type="button" class="round-btn sm" data-dir="1" aria-label="Bajar"${i === n - 1 ? " disabled" : ""}>${icono("M6 9l6 6 6-6")}</button>`;
+    row.querySelector(".cat-admin-name").textContent = c.nombre;
+    row.querySelector(".cat-admin-main").addEventListener("click", () => abrirCategoria(cat));
+    row.querySelectorAll("[data-dir]").forEach((b) => b.addEventListener("click", () => moverCategoria(i, Number(b.dataset.dir))));
+    cont.appendChild(row);
+  });
+  $("#cat-new").disabled = n >= MAX_CATEGORIAS;
+}
+
+let catColor = COLORES[0];
+let catIcono = "otros";
+
+function pintarHojaCategoria() {
+  $("#cat-preview").style.color = catColor;
+  $("#cat-preview").innerHTML = icono(ICONOS[catIcono] || ICONOS.otros);
+  $$("#cat-colors button").forEach((b) => b.setAttribute("aria-checked", String(b.dataset.color === catColor)));
+  $$("#cat-icons button").forEach((b) => {
+    b.setAttribute("aria-checked", String(b.dataset.icono === catIcono));
+    b.style.color = b.dataset.icono === catIcono ? catColor : "";
+  });
+}
+
+function prepararHojaCategoria() {
+  const colores = $("#cat-colors");
+  for (const color of COLORES) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.setAttribute("role", "radio");
+    b.setAttribute("aria-label", `Color ${color}`);
+    b.dataset.color = color;
+    b.style.background = color;
+    b.addEventListener("click", () => { catColor = color; pintarHojaCategoria(); });
+    colores.appendChild(b);
+  }
+  const iconos = $("#cat-icons");
+  for (const [clave, d] of Object.entries(ICONOS)) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.setAttribute("role", "radio");
+    b.setAttribute("aria-label", `Icono ${clave}`);
+    b.dataset.icono = clave;
+    b.innerHTML = icono(d);
+    b.addEventListener("click", () => { catIcono = clave; pintarHojaCategoria(); });
+    iconos.appendChild(b);
+  }
+}
+
+function abrirCategoria(cat = null) {
+  if (!cat && state.categorias.length >= MAX_CATEGORIAS) { toast(`Como mucho ${MAX_CATEGORIAS} categorías`); return; }
+  state.catEdit = cat;
+  $("#cat-title").textContent = cat ? "Editar categoría" : "Nueva categoría";
+  $("#cat-name").value = cat ? cat.nombre : "";
+  catColor = cat ? catInfo(cat.clave).color : COLORES[state.categorias.length % COLORES.length];
+  catIcono = cat && ICONOS[cat.icono] ? cat.icono : "otros";
+  $("#cat-delete").classList.toggle("hidden", !cat || state.categorias.length <= 1);
+  pintarHojaCategoria();
+  $("#cat-sheet").showModal();
+  if (!cat) $("#cat-name").focus();
+}
+
+async function guardarCategoria(ev) {
+  ev.preventDefault();
+  const nombre = $("#cat-name").value.trim().replace(/\s+/g, " ");
+  if (!nombre) { toast("Ponle un nombre"); return; }
+  const ed = state.catEdit;
+  const repetida = state.categorias.some((c) => c.id !== ed?.id && c.nombre.trim().toLowerCase() === nombre.toLowerCase());
+  if (repetida) { toast("Ya tienes una categoría con ese nombre"); return; }
+  const btn = ev.submitter || $("#cat-form button[type=submit]");
+  btn.disabled = true;
+  try {
+    const datos = { nombre, color: catColor, icono: catIcono };
+    if (ed) {
+      const nueva = await state.store.updateCategoria(ed.id, datos);
+      state.categorias = state.categorias.map((c) => (c.id === ed.id ? nueva : c));
+    } else {
+      const orden = state.categorias.reduce((m, c) => Math.max(m, c.orden), -1) + 1;
+      const clave = "c-" + crypto.randomUUID().replace(/-/g, "").slice(0, 10);
+      state.categorias.push(await state.store.addCategoria({ ...datos, clave, orden }));
+    }
+    $("#cat-sheet").close();
+    renderCategoryPicker();
+    pintarCategoriasAjustes();
+    pintar();
+    toast(ed ? "Categoría guardada" : `Categoría ${nombre} creada`);
+  } catch (e) {
+    console.error(e);
+    toast(e?.code === "23505" ? "Ya tienes una categoría con ese nombre" : "No se ha podido guardar");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// Al borrar una categoría, sus gastos pasan a «Otros» (o a la primera que quede).
+async function borrarCategoria() {
+  const cat = state.catEdit;
+  if (!cat) return;
+  const resto = state.categorias.filter((c) => c.id !== cat.id);
+  if (!resto.length) return;
+  const destino = resto.find((c) => c.clave === "otros") || resto[0];
+  if (!confirm(`¿Borrar la categoría ${cat.nombre}? Sus gastos pasarán a ${destino.nombre}.`)) return;
+  try {
+    await state.store.recategorizar(cat.clave, destino.clave);
+    await state.store.removeCategoria(cat.id);
+    state.categorias = resto;
+    if (state.categoria === cat.clave) state.categoria = destino.clave;
+    $("#cat-sheet").close();
+    renderCategoryPicker();
+    pintarCategoriasAjustes();
+    toast("Categoría borrada");
+    await Promise.all([cargar(), cargarViajes()]);
+  } catch (e) {
+    console.error(e);
+    toast("No se ha podido borrar");
+  }
+}
+
+async function moverCategoria(i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= state.categorias.length) return;
+  const lista = [...state.categorias];
+  [lista[i], lista[j]] = [lista[j], lista[i]];
+  const cambios = lista.map((c, orden) => ({ c, orden })).filter(({ c, orden }) => c.orden !== orden);
+  state.categorias = lista.map((c, orden) => ({ ...c, orden }));
+  pintarCategoriasAjustes();
+  renderCategoryPicker();
+  try {
+    await Promise.all(cambios.map(({ c, orden }) => state.store.updateCategoria(c.id, { orden })));
+  } catch (e) {
+    console.error(e);
+    toast("No se ha podido guardar el orden");
+    await cargarCategorias();
   }
 }
 
@@ -1027,7 +1283,10 @@ function abrirAñadir(g = null) {
   $("#amount").value = ed ? String(ed.importe).replace(".", ",") : "";
   $("#note").value = ed ? ed.nota || "" : "";
   if (ed) elegirCategoria(ed.categoria);
-  else elegirCategoria(safeStorage(() => localStorage.getItem("gastos-erasmus:ultima-cat"), null) || state.categoria);
+  else {
+    const ultima = safeStorage(() => localStorage.getItem("gastos-erasmus:ultima-cat"), null) || state.categoria;
+    elegirCategoria(state.categorias.some((c) => c.clave === ultima) ? ultima : state.categorias[0]?.clave);
+  }
   pistaViaje();
   $("#add-sheet").showModal();
   if (!ed) $("#amount").focus();
@@ -1184,6 +1443,7 @@ async function abrirAtajos() {
   history.pushState({ p: "atajos" }, "", "#atajos");
   mostrarPantalla("#shortcuts-screen");
   $("#sc-url").value = `${cfg.supabaseUrl}/rest/v1/rpc/add_gasto`;
+  $("#sc-url-cats").value = `${cfg.supabaseUrl}/rest/v1/rpc/mis_categorias`;
   $("#sc-key").value = cfg.supabaseAnonKey;
   $("#sc-token").value = "Cargando…";
   tokenAtajo = null;
@@ -1233,6 +1493,7 @@ async function mostrarApp() {
   mostrarPantalla("#shell");
   cambiarVista(state.vista);
   state.presupuesto = await state.store.getBudget().catch(() => 0);
+  await cargarCategorias();
   await Promise.all([cargar(), cargarViajes()]);
   if (state.vista === "ajustes") llenarAjustes();
   if (new URLSearchParams(location.search).has("nuevo")) abrirAñadir();
@@ -1318,6 +1579,10 @@ function init() {
   $("#add-form").addEventListener("submit", añadir);
   $("#date").addEventListener("change", pistaViaje);
   $("#trip-new").addEventListener("click", () => abrirViaje());
+  prepararHojaCategoria();
+  $("#cat-new").addEventListener("click", () => abrirCategoria());
+  $("#cat-form").addEventListener("submit", guardarCategoria);
+  $("#cat-delete").addEventListener("click", borrarCategoria);
   $("#trip-form").addEventListener("submit", guardarViaje);
   $("#trip-delete").addEventListener("click", borrarViaje);
   $("#trip-start").addEventListener("change", () => {
@@ -1381,7 +1646,7 @@ function init() {
         toast("Código nuevo generado: vuelve a instalar el atajo");
       }
     });
-    for (const id of ["#sc-url", "#sc-key", "#sc-token"]) {
+    for (const id of ["#sc-url", "#sc-url-cats", "#sc-key", "#sc-token"]) {
       $(id).addEventListener("focus", (e) => e.target.select());
     }
     sb.auth.onAuthStateChange((_event, session) => {
@@ -1392,6 +1657,7 @@ function init() {
         state.rango = [];
         state.viajes = [];
         state.gastosViaje = [];
+        state.categorias = [];
         mostrarLogin();
       }
       else if (prev !== state.user.id) mostrarApp();
