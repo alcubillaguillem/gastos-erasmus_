@@ -1222,11 +1222,107 @@ function llenarAjustes() {
     $("#account-method").textContent = `Has entrado con ${proveedor}`;
     $("#open-shortcuts").classList.remove("hidden");
     $("#logout").classList.remove("hidden");
+    pintarAvisos();
   }
+}
+
+/* ---------- Avisos de la app (Web Push) ---------- */
+
+function avisosSoportados() {
+  return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window && !!cfg.vapidPublica;
+}
+
+async function suscripcionActual() {
+  if (!avisosSoportados()) return null;
+  const reg = await navigator.serviceWorker.getRegistration();
+  return reg ? reg.pushManager.getSubscription() : null;
+}
+
+function claveServidor(b64) {
+  const s = atob((b64 + "=".repeat((4 - (b64.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from(s, (c) => c.charCodeAt(0));
+}
+
+async function guardarSuscripcion(sub) {
+  const j = sub.toJSON();
+  const { error } = await sb.rpc("guardar_aviso", { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth });
+  if (error) throw error;
+}
+
+async function pintarAvisos() {
+  const card = $("#avisos-card"), txt = $("#avisos-txt"), btn = $("#avisos-btn");
+  card.classList.remove("hidden");
+  btn.classList.add("hidden");
+  btn.disabled = false;
+  if (!avisosSoportados()) {
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    const instalada = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+    txt.textContent = ios && !instalada
+      ? "Para recibir avisos, añade la app a la pantalla de inicio (Compartir › Añadir a pantalla de inicio) y ábrela desde ahí."
+      : "Este navegador no admite avisos.";
+    return;
+  }
+  if (Notification.permission === "denied") {
+    txt.textContent = "Has bloqueado los avisos. Actívalos en Ajustes del iPhone › Notificaciones › Gastos (o en los ajustes del navegador).";
+    return;
+  }
+  const sub = await suscripcionActual().catch(() => null);
+  btn.classList.remove("hidden");
+  if (sub && Notification.permission === "granted") {
+    txt.textContent = "Activados en este dispositivo. Cuando apuntes un gasto desde el atajo, te avisará la app.";
+    btn.textContent = "Desactivar avisos";
+    btn.dataset.accion = "quitar";
+  } else {
+    txt.textContent = "Recibe un aviso de la app cada vez que apuntes un gasto desde el atajo.";
+    btn.textContent = "Activar avisos";
+    btn.dataset.accion = "activar";
+  }
+}
+
+async function alternarAvisos() {
+  const btn = $("#avisos-btn");
+  btn.disabled = true;
+  try {
+    if (btn.dataset.accion === "quitar") {
+      const sub = await suscripcionActual();
+      if (sub) {
+        await sb.rpc("quitar_aviso", { p_endpoint: sub.endpoint });
+        await sub.unsubscribe();
+      }
+      toast("Avisos desactivados");
+    } else {
+      const permiso = await Notification.requestPermission();
+      if (permiso !== "granted") { toast("Sin permiso no se pueden mandar avisos"); return; }
+      const reg = await navigator.serviceWorker.ready;
+      const sub = (await reg.pushManager.getSubscription())
+        || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: claveServidor(cfg.vapidPublica) }));
+      await guardarSuscripcion(sub);
+      toast("Avisos activados");
+    }
+  } catch (e) {
+    console.error(e);
+    toast("No se han podido cambiar los avisos");
+  } finally {
+    pintarAvisos();
+  }
+}
+
+// Al entrar, vuelve a guardar la suscripción de este dispositivo (puede cambiar sola).
+async function refrescarSuscripcion() {
+  try {
+    if (!remote || !avisosSoportados() || Notification.permission !== "granted") return;
+    const sub = await suscripcionActual();
+    if (sub) await guardarSuscripcion(sub);
+  } catch (e) { console.error(e); }
 }
 
 async function cerrarSesion() {
   if (!confirm("¿Cerrar sesión en este dispositivo?")) return;
+  // Este dispositivo deja de recibir los avisos de esta cuenta.
+  try {
+    const sub = await suscripcionActual();
+    if (sub) { await sb.rpc("quitar_aviso", { p_endpoint: sub.endpoint }); await sub.unsubscribe(); }
+  } catch (e) { console.error(e); }
   await sb.auth.signOut();
 }
 
@@ -1643,6 +1739,7 @@ async function mostrarApp() {
   await Promise.all([cargar(), cargarViajes()]);
   if (state.vista === "ajustes") llenarAjustes();
   if (new URLSearchParams(location.search).has("nuevo")) abrirAñadir();
+  refrescarSuscripcion();
 }
 
 function mostrarLogin() {
@@ -1768,6 +1865,7 @@ function init() {
     $("#signup-btn").addEventListener("click", registrarse);
     $("#google-btn").addEventListener("click", entrarConGoogle);
     $("#logout").addEventListener("click", cerrarSesion);
+    $("#avisos-btn").addEventListener("click", alternarAvisos);
     $("#copy-code").addEventListener("click", async () => {
       if (!tokenAtajo) return;
       const ok = await copiarTexto(tokenAtajo);

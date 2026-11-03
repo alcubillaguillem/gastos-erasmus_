@@ -1,9 +1,9 @@
 // Service worker: permite abrir la app sin conexión (los datos necesitan internet en modo Supabase).
-const CACHE = "gastos-erasmus-v23";
+const CACHE = "gastos-erasmus-v24";
 const ASSETS = [
-  "./", "index.html", "styles.css?v=23", "app.js?v=23", "charts.js?v=23", "config.js?v=23", "manifest.webmanifest",
+  "./", "index.html", "styles.css?v=24", "app.js?v=24", "charts.js?v=24", "config.js?v=24", "manifest.webmanifest",
   "vendor/supabase-js-2.117.3.js", "vendor/fonts/inter-latin.woff2", "vendor/fonts/space-grotesk-latin.woff2",
-  "icons/icon.svg?v=23", "icons/icon-192.png?v=23", "icons/icon-512.png?v=23", "icons/apple-touch-icon.png?v=23",
+  "icons/icon.svg?v=24", "icons/icon-192.png?v=24", "icons/icon-512.png?v=24", "icons/apple-touch-icon.png?v=24",
 ];
 
 self.addEventListener("install", (e) => {
@@ -37,4 +37,25 @@ self.addEventListener("fetch", (e) => {
       })
       .catch(() => caches.match(e.request, { ignoreSearch: true }))
   );
+});
+
+// Avisos de la app (Web Push): «Gasto apuntado» al guardar un gasto desde el atajo.
+self.addEventListener("push", (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch { d = { cuerpo: e.data?.text() }; }
+  e.waitUntil(self.registration.showNotification(d.titulo || "Gastos", {
+    body: d.cuerpo || "",
+    icon: "icons/icon-192.png?v=24",
+    badge: "icons/icon-192.png?v=24",
+    tag: d.tag,
+  }));
+});
+
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  e.waitUntil((async () => {
+    const ventanas = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const w of ventanas) if ("focus" in w) return w.focus();
+    return self.clients.openWindow("./");
+  })());
 });
