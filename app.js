@@ -398,6 +398,240 @@ function toast(msg) {
   toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
 }
 
+/* ---------- Ventanas propias (en lugar de confirm y prompt del navegador) ---------- */
+
+const ask = { resolver: null, campo: false };
+
+function abrirPregunta({ titulo, texto = "", valor = "", placeholder = "", aceptar = "Aceptar", peligro = false, campo = false, max = 30 }) {
+  if (ask.resolver) ask.resolver(campo ? null : false);
+  return new Promise((resolve) => {
+    ask.campo = campo;
+    ask.resolver = (r) => { ask.resolver = null; resolve(r); };
+    $("#ask-title").textContent = titulo;
+    $("#ask-text").textContent = texto;
+    $("#ask-text").classList.toggle("hidden", !texto);
+    const inp = $("#ask-input");
+    inp.classList.toggle("hidden", !campo);
+    inp.value = valor;
+    inp.placeholder = placeholder;
+    inp.maxLength = max;
+    const ok = $("#ask-ok");
+    ok.textContent = aceptar;
+    ok.className = `btn big-btn ${peligro ? "danger-fill" : "primary"}`;
+    $("#ask-sheet").showModal();
+    if (campo) { inp.focus(); inp.select(); } else ok.focus();
+  });
+}
+// Devuelve true o false.
+const confirmar = (opts) => abrirPregunta({ ...opts, campo: false });
+// Devuelve el texto escrito (sin espacios a los lados) o null si se cancela.
+const preguntar = (opts) => abrirPregunta({ ...opts, campo: true });
+
+function prepararPregunta() {
+  $("#ask-form").addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const r = ask.resolver;
+    if (!r) return;
+    let valor = true;
+    if (ask.campo) {
+      valor = $("#ask-input").value.trim();
+      if (!valor) { $("#ask-input").focus(); return; }
+    }
+    ask.resolver = null;
+    $("#ask-sheet").close();
+    r(valor);
+  });
+  $("#ask-sheet").addEventListener("close", () => { if (ask.resolver) ask.resolver(ask.campo ? null : false); });
+}
+
+/* ---------- Calendario: un día o ida y vuelta, como al buscar vuelos ---------- */
+
+const ICONO_CALENDARIO = "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4";
+const cal = { rango: true, ini: null, fin: null, resolver: null };
+
+function sumarDias(iso, n) {
+  const d = parseISO(iso);
+  d.setDate(d.getDate() + n);
+  return isoDate(d);
+}
+
+// «Hoy», «Ayer» o «6 nov» (con el año si no es el actual).
+function textoDia(iso) {
+  if (!iso) return "";
+  const hoy = hoyISO();
+  if (iso === hoy) return "Hoy";
+  if (iso === sumarDias(hoy, -1)) return "Ayer";
+  if (iso === sumarDias(hoy, 1)) return "Mañana";
+  const d = parseISO(iso);
+  const opts = { day: "numeric", month: "short" };
+  if (d.getFullYear() !== new Date().getFullYear()) opts.year = "numeric";
+  return d.toLocaleDateString("es-ES", opts).replace(".", "");
+}
+const textoDiaLargo = (iso) => parseISO(iso).toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" }).replace(/\./g, "");
+
+function elegirFechas({ inicio = null, fin = null, rango = true, titulo = "" } = {}) {
+  if (cal.resolver) cal.resolver(null);
+  return new Promise((resolve) => {
+    cal.rango = rango;
+    cal.ini = inicio;
+    cal.fin = rango ? fin : null;
+    cal.resolver = (r) => { cal.resolver = null; resolve(r); };
+    $("#cal-title").textContent = titulo || (rango ? "Ida y vuelta" : "Fecha");
+    $("#cal-sel").classList.toggle("hidden", !rango);
+    $("#cal-ok").classList.toggle("hidden", !rango);
+    $("#cal-quick").classList.toggle("hidden", rango);
+    construirMeses(inicio || hoyISO(), fin || inicio || hoyISO());
+    pintarCal();
+    $("#cal-sheet").showModal();
+    const cont = $("#cal-months");
+    const foco = cont.querySelector(`[data-mes="${(inicio || hoyISO()).slice(0, 7)}"]`);
+    cont.scrollTop = foco ? foco.offsetTop - 4 : 0;
+  });
+}
+
+function construirMeses(a, b) {
+  const hoy = hoyISO();
+  const desde = parseISO(a < hoy ? a : hoy);
+  const hasta = parseISO(b > hoy ? b : hoy);
+  const primero = desde.getFullYear() * 12 + desde.getMonth() - 12;
+  const ultimo = hasta.getFullYear() * 12 + hasta.getMonth() + 18;
+  let html = "";
+  for (let k = primero; k <= ultimo; k++) {
+    const y = Math.floor(k / 12), m = k % 12;
+    const d0 = new Date(y, m, 1);
+    const dias = new Date(y, m + 1, 0).getDate();
+    const nombre = d0.toLocaleDateString("es-ES", { month: "long", year: "numeric" }).replace(" de ", " ");
+    html += `<section class="cal-month" data-mes="${isoDate(d0).slice(0, 7)}"><h3>${esc(nombre)}</h3><div class="cal-grid">${"<i></i>".repeat((d0.getDay() + 6) % 7)}`;
+    for (let d = 1; d <= dias; d++) html += `<button type="button" class="cal-d" data-d="${isoDate(new Date(y, m, d))}"><span>${d}</span></button>`;
+    html += "</div></section>";
+  }
+  $("#cal-months").innerHTML = html;
+}
+
+function pintarCal() {
+  const hoy = hoyISO();
+  const tramo = Boolean(cal.ini && cal.fin && cal.fin !== cal.ini);
+  for (const b of $$("#cal-months .cal-d")) {
+    const d = b.dataset.d;
+    b.classList.toggle("today", d === hoy);
+    b.classList.toggle("ini", d === cal.ini);
+    b.classList.toggle("fin", Boolean(cal.fin) && d === cal.fin);
+    b.classList.toggle("en", tramo && d > cal.ini && d < cal.fin);
+    b.classList.toggle("tramo", tramo && (d === cal.ini || d === cal.fin));
+  }
+  if (!cal.rango) return;
+  $("#cal-ini").textContent = cal.ini ? textoDiaLargo(cal.ini) : "Elige";
+  $("#cal-fin").textContent = cal.fin ? textoDiaLargo(cal.fin) : "Elige";
+  const toca = !cal.ini || cal.fin ? "ini" : "fin";
+  $("#cal-box-ini").classList.toggle("on", toca === "ini");
+  $("#cal-box-fin").classList.toggle("on", toca === "fin");
+  const ok = $("#cal-ok");
+  ok.disabled = !(cal.ini && cal.fin);
+  if (cal.ini && cal.fin) {
+    const n = diasEntre(cal.ini, cal.fin);
+    ok.textContent = `Listo · ${n} ${n === 1 ? "día" : "días"}`;
+  } else ok.textContent = cal.ini ? "Elige la vuelta" : "Elige la ida";
+}
+
+function terminarCal(valor) {
+  const r = cal.resolver;
+  cal.resolver = null;
+  if ($("#cal-sheet").open) $("#cal-sheet").close();
+  if (r) r(valor);
+}
+
+function prepararCalendario() {
+  $("#cal-months").addEventListener("click", (e) => {
+    const b = e.target.closest(".cal-d");
+    if (!b) return;
+    const d = b.dataset.d;
+    if (!cal.rango) { cal.ini = d; pintarCal(); setTimeout(() => terminarCal({ inicio: d }), 120); return; }
+    if (!cal.ini || cal.fin || d < cal.ini) { cal.ini = d; cal.fin = null; }
+    else if (diasEntre(cal.ini, d) > 366) { toast("Un viaje puede durar como mucho un año"); return; }
+    else cal.fin = d;
+    pintarCal();
+  });
+  $("#cal-box-ini").addEventListener("click", () => { if (cal.ini && cal.fin) { cal.fin = null; pintarCal(); } });
+  $("#cal-ok").addEventListener("click", () => { if (cal.ini && cal.fin) terminarCal({ inicio: cal.ini, fin: cal.fin }); });
+  $$("#cal-quick [data-dias]").forEach((b) => b.addEventListener("click", () => terminarCal({ inicio: sumarDias(hoyISO(), Number(b.dataset.dias)) })));
+  $("#cal-sheet").addEventListener("close", () => { if (cal.resolver) cal.resolver(null); });
+
+  // Botones de fecha suelta: muestran el día y abren el calendario.
+  for (const btn of $$("[data-fecha]")) {
+    const input = document.getElementById(btn.dataset.fecha);
+    btn.addEventListener("click", async () => {
+      const r = await elegirFechas({ inicio: input.value || hoyISO(), rango: false });
+      if (!r) return;
+      input.value = r.inicio;
+      pintarBotonFecha(input.id);
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  }
+  $("#trip-dates").addEventListener("click", async () => {
+    const r = await elegirFechas({ inicio: $("#trip-start").value || null, fin: $("#trip-end").value || null, rango: true });
+    if (!r) return;
+    $("#trip-start").value = r.inicio;
+    $("#trip-end").value = r.fin;
+    pintarFechasViaje();
+  });
+}
+
+function pintarBotonFecha(id) {
+  const btn = document.querySelector(`[data-fecha="${id}"]`);
+  if (btn) btn.querySelector("span").textContent = textoDia(document.getElementById(id).value || hoyISO());
+}
+
+function pintarFechasViaje() {
+  const a = $("#trip-start").value, b = $("#trip-end").value;
+  const btn = $("#trip-dates");
+  btn.classList.toggle("vacio", !(a && b));
+  if (a && b) {
+    const n = diasEntre(a, b);
+    btn.querySelector("strong").textContent = rangoTexto(a, b);
+    btn.querySelector("small").textContent = `${textoDiaLargo(a)} → ${textoDiaLargo(b)} · ${n} ${n === 1 ? "día" : "días"}`;
+  } else {
+    btn.querySelector("strong").textContent = "Elige ida y vuelta";
+    btn.querySelector("small").textContent = "Toca para abrir el calendario";
+  }
+}
+
+/* ---------- Selección con fichas en lugar de desplegables ---------- */
+
+// Oculta el <select> y pone al lado una ficha por opción. El <select> sigue guardando el valor.
+function fichas(sel, iconoDe = null) {
+  let box = sel.nextElementSibling;
+  if (!box || !box.classList.contains("chips")) {
+    box = document.createElement("div");
+    box.className = "chips";
+    box.setAttribute("role", "radiogroup");
+    sel.after(box);
+    sel.hidden = true;
+    box.addEventListener("click", (e) => {
+      const b = e.target.closest(".chip");
+      if (!b) return;
+      sel.value = b.dataset.v;
+      marcarFichas(sel);
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+  }
+  box.innerHTML = "";
+  for (const o of sel.options) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "chip";
+    b.setAttribute("role", "radio");
+    b.dataset.v = o.value;
+    b.innerHTML = `${iconoDe ? iconoDe(o.value) : ""}<span></span>`;
+    b.querySelector("span").textContent = o.textContent;
+    box.appendChild(b);
+  }
+  marcarFichas(sel);
+}
+function marcarFichas(sel) {
+  const box = sel.nextElementSibling;
+  if (box?.classList.contains("chips")) for (const b of box.children) b.setAttribute("aria-checked", String(b.dataset.v === sel.value));
+}
+
 function renderCategoryPicker() {
   const grid = $("#cat-grid");
   grid.innerHTML = "";
@@ -886,7 +1120,7 @@ function renderViajes() {
     <div class="trip-actions">
       <button type="button" class="btn pill trip-back">${icono("M15 6l-6 6 6 6")}Viajes</button>
       ${remote ? `<button type="button" class="btn pill" id="trip-share">${icono(ICONO_PERSONAS)}Compartir</button>` : ""}
-      <button type="button" class="btn pill" id="trip-edit">Editar viaje</button>
+      <button type="button" class="btn pill" id="trip-edit">Editar</button>
     </div>
     <div class="trip-head">
       <div><div class="small muted">${esc(rangoTexto(v.inicio, v.fin))}${estado}</div><h2></h2></div>
@@ -972,8 +1206,9 @@ function abrirViaje(v = null) {
   state.viajeEdit = v;
   $("#trip-title").textContent = v ? "Editar viaje" : "Nuevo viaje";
   $("#trip-name").value = v ? v.nombre : "";
-  $("#trip-start").value = v ? v.inicio : hoyISO();
-  $("#trip-end").value = v ? v.fin : hoyISO();
+  $("#trip-start").value = v ? v.inicio : "";
+  $("#trip-end").value = v ? v.fin : "";
+  pintarFechasViaje();
   $("#trip-delete").classList.toggle("hidden", !v);
   $("#trip-sheet").showModal();
   if (!v) $("#trip-name").focus();
@@ -984,7 +1219,8 @@ async function guardarViaje(ev) {
   const nombre = $("#trip-name").value.trim();
   const inicio = $("#trip-start").value;
   const fin = $("#trip-end").value;
-  if (!nombre || !inicio || !fin) { toast("Pon el destino y las fechas"); return; }
+  if (!nombre) { toast("Pon el destino"); $("#trip-name").focus(); return; }
+  if (!inicio || !fin) { $("#trip-dates").click(); return; }
   if (fin < inicio) { toast("La vuelta no puede ser antes de la ida"); return; }
   if (diasEntre(inicio, fin) > 366) { toast("Un viaje puede durar como mucho un año"); return; }
   const btn = ev.submitter || $("#trip-form button[type=submit]");
@@ -1012,7 +1248,7 @@ async function borrarViaje() {
   const aviso = v?.compartido
     ? `¿Borrar el viaje a ${v.nombre}? Se borra para todos los participantes, con sus gastos compartidos.`
     : `¿Borrar el viaje a ${v?.nombre}? Los gastos no se borran.`;
-  if (!v || !confirm(aviso)) return;
+  if (!v || !(await confirmar({ titulo: "Borrar viaje", texto: aviso, aceptar: "Borrar", peligro: true }))) return;
   try {
     await state.store.removeViaje(v.id);
     state.viajeSel = null;
@@ -1269,7 +1505,7 @@ async function borrarCategoria() {
   const resto = state.categorias.filter((c) => c.id !== cat.id);
   if (!resto.length) return;
   const destino = resto.find((c) => c.clave === "otros") || resto[0];
-  if (!confirm(`¿Borrar la categoría ${cat.nombre}? Sus gastos pasarán a ${destino.nombre}.`)) return;
+  if (!(await confirmar({ titulo: `Borrar ${cat.nombre}`, texto: `Sus gastos pasarán a ${destino.nombre}.`, aceptar: "Borrar", peligro: true }))) return;
   try {
     await state.store.recategorizar(cat.clave, destino.clave);
     await state.store.removeCategoria(cat.id);
@@ -1427,7 +1663,7 @@ async function refrescarSuscripcion() {
 async function cerrarSesion() {
   const n = leerCola().length;
   const aviso = n ? `Tienes ${n === 1 ? "1 gasto" : n + " gastos"} sin subir. Se subirán cuando vuelvas a entrar con esta cuenta en este dispositivo. ` : "";
-  if (!confirm(`${aviso}¿Cerrar sesión en este dispositivo?`)) return;
+  if (!(await confirmar({ titulo: "Cerrar sesión", texto: `${aviso}Dejarás de ver tus gastos en este dispositivo hasta que vuelvas a entrar.`, aceptar: "Cerrar sesión", peligro: true }))) return;
   // Este dispositivo deja de recibir los avisos de esta cuenta.
   try {
     const sub = await suscripcionActual();
@@ -1437,7 +1673,7 @@ async function cerrarSesion() {
 }
 
 async function borrar(g) {
-  if (!confirm(`¿Borrar ${fmt(g.importe)} de ${catInfo(g.categoria).nombre}?`)) return;
+  if (!(await confirmar({ titulo: "Borrar gasto", texto: `${fmt(g.importe)} de ${catInfo(g.categoria).nombre}${g.nota ? ` · ${g.nota}` : ""}`, aceptar: "Borrar", peligro: true }))) return;
   try {
     if (g.pendiente) quitarDeCola(g.id);
     else await state.store.remove(g.id);
@@ -1674,6 +1910,7 @@ function abrirAñadir(g = null) {
   $("#add-title").textContent = ed ? "Editar gasto" : "Nuevo gasto";
   $("#add-submit").textContent = ed ? "Guardar cambios" : "Añadir gasto";
   $("#date").value = ed ? ed.fecha : hoyISO();
+  pintarBotonFecha("date");
   $("#amount").value = ed ? String(ed.importe).replace(".", ",") : "";
   $("#note").value = ed ? ed.nota || "" : "";
   if (ed) elegirCategoria(ed.categoria);
@@ -1994,9 +2231,8 @@ function init() {
   $("#cat-delete").addEventListener("click", borrarCategoria);
   $("#trip-form").addEventListener("submit", guardarViaje);
   $("#trip-delete").addEventListener("click", borrarViaje);
-  $("#trip-start").addEventListener("change", () => {
-    if ($("#trip-end").value < $("#trip-start").value) $("#trip-end").value = $("#trip-start").value;
-  });
+  prepararPregunta();
+  prepararCalendario();
 
   $("#open-shortcuts").addEventListener("click", abrirAtajos);
   document.querySelectorAll("[data-back]").forEach((b) => b.addEventListener("click", () => history.back()));
@@ -2046,7 +2282,7 @@ function init() {
       window.location.href = cfg.shortcutUrl || "shortcuts://create-shortcut";
     });
     $("#regen-token").addEventListener("click", async () => {
-      if (!confirm("El código anterior dejará de funcionar y tendrás que volver a instalar el atajo. ¿Seguir?")) return;
+      if (!(await confirmar({ titulo: "Cambiar código", texto: "El código anterior dejará de funcionar y tendrás que volver a instalar el atajo.", aceptar: "Cambiar", peligro: true }))) return;
       const { data, error } = await sb.rpc("regenerar_token_atajo");
       if (error) toast("No se ha podido regenerar");
       else {
