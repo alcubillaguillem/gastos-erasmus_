@@ -204,24 +204,33 @@ class LocalStore {
   }
 }
 
+// Supabase devuelve como mucho 1000 filas por consulta: se piden en tandas hasta tenerlas todas.
+const TANDA = 1000;
+
 class SupabaseStore {
   constructor(client) { this.sb = client; }
+  // consulta() crea la consulta de nuevo en cada tanda; el orden debe ser estable (acaba en id).
+  async todas(consulta) {
+    const filas = [];
+    for (let desde = 0; ; desde += TANDA) {
+      const { data, error } = await consulta().range(desde, desde + TANDA - 1);
+      if (error) throw error;
+      filas.push(...data);
+      if (data.length < TANDA) return filas;
+    }
+  }
   async listMonth(from, to) {
-    const { data, error } = await this.sb.from("gastos").select("*")
+    return this.todas(() => this.sb.from("gastos").select("*")
       .gte("fecha", from).lte("fecha", to)
-      .order("fecha", { ascending: false }).order("created_at", { ascending: false });
-    if (error) throw error;
-    return data;
+      .order("fecha", { ascending: false }).order("created_at", { ascending: false }).order("id"));
   }
   async listAll() {
-    const { data, error } = await this.sb.from("gastos").select("*").order("fecha", { ascending: true });
-    if (error) throw error;
-    return data;
+    return this.todas(() => this.sb.from("gastos").select("*")
+      .order("fecha", { ascending: true }).order("created_at", { ascending: true }).order("id"));
   }
   async listConViaje() {
-    const { data, error } = await this.sb.from("gastos").select("*").not("viaje_id", "is", null);
-    if (error) throw error;
-    return data;
+    return this.todas(() => this.sb.from("gastos").select("*")
+      .not("viaje_id", "is", null).order("fecha").order("id"));
   }
   async add(g) {
     const { data, error } = await this.sb.from("gastos").insert(g).select().single();
