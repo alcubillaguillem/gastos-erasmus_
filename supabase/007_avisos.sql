@@ -2,6 +2,8 @@
 -- Cada dispositivo que activa los avisos guarda aquí su suscripción. Cuando add_gasto
 -- guarda un gasto, pide a la función «avisar» (Edge Function) que mande el aviso.
 -- Las claves VAPID se guardan en Vault (vapid_publica, vapid_privada), fuera de este archivo.
+-- La función solo hace algo si recibe la llave aviso_secreto (también en Vault), que solo
+-- conoce la base de datos.
 
 create extension if not exists pg_net;
 
@@ -56,12 +58,16 @@ revoke all on table public.avisos_enviados from anon, authenticated;
 
 -- Lo que necesita la función «avisar». Solo la puede llamar ella (service_role),
 -- solo para gastos de hace menos de 2 minutos y solo una vez por gasto.
-create or replace function public.aviso_datos(p_gasto uuid)
+create or replace function public.aviso_datos(p_gasto uuid, p_secreto text)
 returns json
 language plpgsql security definer set search_path = public, pg_catalog
 as $$
 declare g gastos; nombre_cat text;
 begin
+  if p_secreto is null or p_secreto is distinct from
+     (select decrypted_secret from vault.decrypted_secrets where name = 'aviso_secreto') then
+    return null;
+  end if;
   select * into g from gastos where id = p_gasto and created_at > now() - interval '2 minutes';
   if not found then return null; end if;
   insert into avisos_enviados (gasto_id) values (p_gasto) on conflict do nothing;
@@ -76,8 +82,8 @@ begin
     'publica', (select decrypted_secret from vault.decrypted_secrets where name = 'vapid_publica'),
     'privada', (select decrypted_secret from vault.decrypted_secrets where name = 'vapid_privada'));
 end $$;
-revoke all on function public.aviso_datos(uuid) from public, anon, authenticated;
-grant execute on function public.aviso_datos(uuid) to service_role;
+revoke all on function public.aviso_datos(uuid, text) from public, anon, authenticated;
+grant execute on function public.aviso_datos(uuid, text) to service_role;
 
 -- add_gasto: igual que en 006, pero si el usuario tiene avisos activados pide el aviso
 -- y devuelve «notificar» vacío para que el atajo no muestre el suyo.
@@ -107,7 +113,8 @@ begin
       perform net.http_post(
         url := 'https://oawjytdklkqhwtglfbhp.supabase.co/functions/v1/avisar',
         body := jsonb_build_object('gasto', g.id),
-        headers := jsonb_build_object('Content-Type', 'application/json'));
+        headers := jsonb_build_object('Content-Type', 'application/json', 'x-aviso',
+          (select decrypted_secret from vault.decrypted_secrets where name = 'aviso_secreto')));
       avisado := true;
     exception when others then
       avisado := false;  -- si falla el aviso, el gasto se guarda igual y el atajo muestra el suyo

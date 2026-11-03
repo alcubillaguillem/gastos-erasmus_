@@ -1,7 +1,7 @@
 // Edge Function «avisar»: manda el aviso «Gasto apuntado» a los dispositivos del usuario.
-// La llama add_gasto (pg_net) con {"gasto": "<uuid>"}. No necesita sesión: aviso_datos solo
-// responde para un gasto de hace menos de 2 minutos y una sola vez, y los datos (incluidas
-// las claves VAPID) solo los puede leer esta función con la clave service_role.
+// La llama add_gasto (pg_net) con {"gasto": "<uuid>"} y la cabecera x-aviso (llave de Vault).
+// No necesita sesión: aviso_datos solo responde con la llave correcta, para un gasto de hace
+// menos de 2 minutos y una sola vez. Los datos solo los lee esta función (service_role).
 import webpush from "npm:web-push@3.6.7";
 import { createClient } from "npm:@supabase/supabase-js@2.49.4";
 
@@ -15,7 +15,8 @@ Deno.serve(async (req) => {
   }
 
   const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-  const { data, error } = await sb.rpc("aviso_datos", { p_gasto: gasto });
+  const secreto = req.headers.get("x-aviso") ?? "";
+  const { data, error } = await sb.rpc("aviso_datos", { p_gasto: gasto, p_secreto: secreto });
   if (error) return new Response(error.message, { status: 500 });
   if (!data || !data.subs?.length) return Response.json({ enviados: 0 });
 
