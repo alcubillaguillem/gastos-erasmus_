@@ -1,9 +1,9 @@
 // Service worker: permite abrir la app sin conexión (los datos necesitan internet en modo Supabase).
-const CACHE = "gastos-erasmus-v25";
+const CACHE = "gastos-erasmus-v26";
 const ASSETS = [
-  "./", "index.html", "styles.css?v=25", "app.js?v=25", "charts.js?v=25", "config.js?v=25", "manifest.webmanifest",
+  "./", "index.html", "styles.css?v=26", "compartidos.js?v=26", "app.js?v=26", "charts.js?v=26", "config.js?v=26", "manifest.webmanifest",
   "vendor/supabase-js-2.117.3.js", "vendor/fonts/inter-latin.woff2", "vendor/fonts/space-grotesk-latin.woff2",
-  "icons/icon.svg?v=25", "icons/icon-192.png?v=25", "icons/icon-512.png?v=25", "icons/apple-touch-icon.png?v=25",
+  "icons/icon.svg?v=26", "icons/icon-192.png?v=26", "icons/icon-512.png?v=26", "icons/apple-touch-icon.png?v=26",
 ];
 
 self.addEventListener("install", (e) => {
@@ -45,8 +45,8 @@ self.addEventListener("push", (e) => {
   try { d = e.data ? e.data.json() : {}; } catch { d = { cuerpo: e.data?.text() }; }
   e.waitUntil(self.registration.showNotification(d.titulo || "Gastos", {
     body: d.cuerpo || "",
-    icon: "icons/icon-192.png?v=25",
-    badge: "icons/icon-192.png?v=25",
+    icon: "icons/icon-192.png?v=26",
+    badge: "icons/icon-192.png?v=26",
     tag: d.tag,
   }));
 });

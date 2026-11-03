@@ -361,7 +361,7 @@ function viajeDe(g) {
 function enFechas(v, g) { return g.fecha >= v.inicio && g.fecha <= v.fin; }
 // Viaje al que irá un gasto nuevo de esa fecha (mismo criterio que el trigger de Supabase).
 function viajeAuto(fecha) {
-  return state.viajes.find((v) => !v.cerrado && enFechas(v, { fecha })) || null;
+  return state.viajes.find((v) => !v.cerrado && !v.compartido && enFechas(v, { fecha })) || null;
 }
 function gastosDe(v) {
   return state.gastosViaje.filter((g) => g.viaje_id === v.id);
@@ -825,12 +825,12 @@ function tarjetaViaje(v, s, vc) {
     : s.estado === "futuro" ? `<span class="small muted">Próximamente</span>` : "";
   b.innerHTML = `${estado}
     <span class="top-line"><span class="t-name"></span><span class="t-total">${esc(fmt(s.total))}</span></span>
-    <span class="small muted">${esc(rangoTexto(v.inicio, v.fin))} · ${esc(fmt(s.porDia))}/día</span>
+    <span class="small muted">${esc(rangoTexto(v.inicio, v.fin))} · ${v.compartido ? "compartido · tu parte" : `${esc(fmt(s.porDia))}/día`}</span>
     <span class="stack"></span>`;
   b.querySelector(".t-name").textContent = v.nombre;
   pintarStack(b.querySelector(".stack"), porCategoria(s.gastos), s.total || 1);
   b.addEventListener("click", () => {
-    if (state.viajeSel !== v.id) state.verTodoViaje = false;
+    if (state.viajeSel !== v.id) { state.verTodoViaje = false; comp.tab = "gastos"; comp.miembros.delete(v.id); }
     state.viajeSel = v.id;
     renderViajes();
     if (!esEscritorio()) window.scrollTo(0, 0);
@@ -879,11 +879,13 @@ function renderViajes() {
   detalle.classList.toggle("hidden", !v);
   if (!v) return;
   const s = stats.get(v.id);
+  if (v.compartido && remote) { renderCompartido(v, detalle, s); return; }
 
   const estado = v.cerrado ? " · cerrado" : s.estado === "en-curso" ? ` · día ${s.vividos} de ${s.dias}` : s.estado === "futuro" ? " · próximamente" : ` · ${s.dias} ${s.dias === 1 ? "día" : "días"}`;
   detalle.innerHTML = `
     <div class="trip-actions">
       <button type="button" class="btn pill trip-back">${icono("M15 6l-6 6 6 6")}Viajes</button>
+      ${remote ? `<button type="button" class="btn pill" id="trip-share">${icono(ICONO_PERSONAS)}Compartir</button>` : ""}
       <button type="button" class="btn pill" id="trip-edit">Editar viaje</button>
     </div>
     <div class="trip-head">
@@ -900,6 +902,7 @@ function renderViajes() {
   detalle.querySelector("h2").textContent = v.nombre;
   detalle.querySelector(".trip-back").addEventListener("click", () => { state.viajeSel = null; renderViajes(); });
   detalle.querySelector("#trip-edit").addEventListener("click", () => abrirViaje(v));
+  detalle.querySelector("#trip-share")?.addEventListener("click", () => compartirViaje(v));
   const cerrar = detalle.querySelector("#trip-close");
   cerrar.innerHTML = v.cerrado
     ? `${icono("M4 12a8 8 0 1 0 3-6.2M4 4v4h4")}Reabrir viaje`
@@ -1006,7 +1009,10 @@ async function guardarViaje(ev) {
 
 async function borrarViaje() {
   const v = state.viajeEdit;
-  if (!v || !confirm(`¿Borrar el viaje a ${v.nombre}? Los gastos no se borran.`)) return;
+  const aviso = v?.compartido
+    ? `¿Borrar el viaje a ${v.nombre}? Se borra para todos los participantes, con sus gastos compartidos.`
+    : `¿Borrar el viaje a ${v?.nombre}? Los gastos no se borran.`;
+  if (!v || !confirm(aviso)) return;
   try {
     await state.store.removeViaje(v.id);
     state.viajeSel = null;
@@ -1548,11 +1554,25 @@ function abrirMenu(el, construir) {
 
 function abrirMenuGasto(g, el) {
   if (g.pendiente) {
-    abrirMenu(el, (menu) => {
+    abrirMenu(el, (menu, colocar) => {
       const info = document.createElement("div");
       info.className = "ctx-info";
       info.textContent = "Sin conexión: se subirá al volver internet";
       menu.append(info, filaMenu("Eliminar", ICONO_PAPELERA, () => { cerrarMenu(); borrar(g); }, { peligro: true }));
+      colocar();
+    });
+    return;
+  }
+  // Tu parte de un gasto compartido: se cambia desde el viaje, para todos a la vez.
+  if (g.movimiento_id) {
+    abrirMenu(el, (menu, colocar) => {
+      const v = viajeDe(g);
+      const info = document.createElement("div");
+      info.className = "ctx-info";
+      info.textContent = v ? `Tu parte de un gasto compartido en ${v.nombre}` : "Tu parte de un gasto compartido";
+      menu.append(info);
+      if (v) menu.append(filaMenu("Ver en el viaje", ICONO_AVION, () => { cerrarMenu(); abrirViajeCompartido(v.id); }));
+      colocar();
     });
     return;
   }
@@ -1577,8 +1597,9 @@ function abrirMenuGasto(g, el) {
       menu.innerHTML = "";
       menu.append(filaMenu("Atrás", "M15 6l-6 6 6 6", principal));
       menu.firstChild.classList.add("back");
-      const abiertos = viajesAbiertos();
-      if (!abiertos.length) {
+      const abiertos = viajesAbiertos().filter((x) => !x.compartido);
+      const compartidos = remote ? viajesAbiertos().filter((x) => x.compartido) : [];
+      if (!abiertos.length && !compartidos.length) {
         const info = document.createElement("div");
         info.className = "ctx-info";
         info.textContent = "No tienes viajes abiertos";
@@ -1587,6 +1608,15 @@ function abrirMenuGasto(g, el) {
       for (const x of abiertos) {
         menu.append(filaMenu(x.nombre, x.id === g.viaje_id ? ICONO_CHECK : null,
           () => { cerrarMenu(); if (x.id !== g.viaje_id) moverAViaje(g, x); }, { activo: x.id === g.viaje_id }));
+      }
+      for (const x of compartidos) {
+        menu.append(filaMenu(`Repartir en ${x.nombre}`, ICONO_PERSONAS, async () => {
+          cerrarMenu();
+          try {
+            if (!comp.miembros.has(x.id)) await cargarCompartido(x);
+            abrirMov(x, null, { desdeGasto: g });
+          } catch (e) { console.error(e); toast(textoError(e, "No se ha podido abrir el viaje")); }
+        }));
       }
       if (v) menu.append(filaMenu("Quitar del viaje", ICONO_X, () => { cerrarMenu(); moverAViaje(g, null); }, { peligro: true }));
       colocar();
@@ -1873,6 +1903,7 @@ async function mostrarApp() {
   if (new URLSearchParams(location.search).has("nuevo")) abrirAñadir();
   refrescarSuscripcion();
   subirPendientes();
+  procesarInvitacion();
 }
 
 function mostrarLogin() {
@@ -1925,6 +1956,7 @@ function avisoInstalacion() {
 /* ---------- Arranque ---------- */
 
 function init() {
+  guardarInvitacionDeUrl();
   renderCategoryPicker();
   avisoInstalacion();
   const errOAuth = new URLSearchParams(location.search).get("error_description");
@@ -1956,6 +1988,7 @@ function init() {
   $("#date").addEventListener("change", pistaViaje);
   $("#trip-new").addEventListener("click", () => abrirViaje());
   prepararHojaCategoria();
+  prepararHojaMov();
   $("#cat-new").addEventListener("click", () => abrirCategoria());
   $("#cat-form").addEventListener("submit", guardarCategoria);
   $("#cat-delete").addEventListener("click", borrarCategoria);
@@ -2066,6 +2099,7 @@ function init() {
   // Al volver a la app (p. ej. tras añadir un gasto desde el atajo), recargar.
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible" && !$("#shell").classList.contains("hidden")) {
+      if (state.viajeSel) comp.miembros.delete(state.viajeSel); // volver a leer el viaje compartido
       cargar();
       cargarViajes();
       subirPendientes();
