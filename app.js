@@ -460,6 +460,7 @@ function itemGasto(g, { conViaje = true } = {}) {
     <button type="button" class="more" aria-label="Opciones del gasto">${icono(ICONO_MAS)}</button>`;
   el.querySelector(".note").textContent = g.nota || c.nombre;
   const partes = [horaDe(g), g.nota ? c.nombre : ""].filter(Boolean);
+  if (g.pendiente) el.classList.add("pendiente");
   const meta = el.querySelector(".meta");
   meta.textContent = partes.join(" · ");
   if (v) {
@@ -467,6 +468,13 @@ function itemGasto(g, { conViaje = true } = {}) {
     const s = document.createElement("span");
     s.className = "trip";
     s.textContent = v.nombre;
+    meta.append(s);
+  }
+  if (g.pendiente) {
+    if (meta.textContent) meta.append(" · ");
+    const s = document.createElement("span");
+    s.className = "pend";
+    s.textContent = "Sin subir";
     meta.append(s);
   }
   el.querySelector(".more").addEventListener("click", () => abrirMenuGasto(g, el));
@@ -615,10 +623,15 @@ async function cargar() {
   const [from, to] = rangoActual();
   try {
     state.rango = await state.store.listMonth(from, to);
+    guardarCopia("rango", { from, to, gastos: state.rango });
   } catch (e) {
     console.error(e);
-    toast("No se han podido cargar los gastos");
+    const copia = leerCopia("rango");
+    if (sinRed(e) && copia && copia.from === from && copia.to === to) state.rango = copia.gastos;
+    else if (sinRed(e)) state.rango = [];
+    if (!sinRed(e) || !copia) toast(sinRed(e) ? "Sin conexión" : "No se han podido cargar los gastos");
   }
+  mezclarPendientes();
   aplicarRango();
   pintar();
 }
@@ -627,11 +640,97 @@ async function cargarViajes() {
   try {
     state.viajes = await state.store.listViajes();
     state.gastosViaje = state.viajes.length ? await state.store.listConViaje() : [];
+    guardarCopia("viajes", { viajes: state.viajes, gastosViaje: state.gastosViaje });
   } catch (e) {
     console.error(e);
-    toast("No se han podido cargar los viajes");
+    const copia = sinRed(e) && leerCopia("viajes");
+    if (copia) { state.viajes = copia.viajes; state.gastosViaje = copia.gastosViaje; }
+    else if (!sinRed(e)) toast("No se han podido cargar los viajes");
   }
+  mezclarPendientes();
   pintar();
+}
+
+/* ---------- Sin conexión: copia de lo último cargado y cola de gastos pendientes ---------- */
+
+// Un error de red (sin internet), no un error de Supabase.
+function sinRed(e) {
+  if (navigator.onLine === false) return true;
+  const m = String(e?.message || e || "");
+  return /failed to fetch|load failed|networkerror|network request failed|fetch failed/i.test(m);
+}
+
+const claveLocal = (nombre) => `gastos-erasmus:${nombre}:${state.user?.id || "local"}`;
+function guardarCopia(nombre, datos) {
+  if (!remote) return;
+  safeStorage(() => localStorage.setItem(claveLocal("copia-" + nombre), JSON.stringify(datos)), null);
+}
+function leerCopia(nombre) {
+  if (!remote) return null;
+  return safeStorage(() => JSON.parse(localStorage.getItem(claveLocal("copia-" + nombre)) || "null"), null);
+}
+
+function leerCola() {
+  if (!remote) return [];
+  return safeStorage(() => JSON.parse(localStorage.getItem(claveLocal("cola")) || "[]"), []);
+}
+function guardarCola(cola) {
+  return safeStorage(() => { localStorage.setItem(claveLocal("cola"), JSON.stringify(cola)); return true; }, false);
+}
+
+// Los pendientes se ven en las listas como cualquier otro gasto, marcados como «sin subir».
+function mezclarPendientes() {
+  const cola = leerCola();
+  if (!cola.length) return;
+  const [from, to] = rangoActual();
+  for (const g of cola) {
+    const p = { ...g, pendiente: true };
+    if (g.fecha >= from && g.fecha <= to && !state.rango.some((x) => x.id === g.id)) state.rango.unshift(p);
+    if (g.viaje_id && !state.gastosViaje.some((x) => x.id === g.id)) state.gastosViaje.unshift(p);
+  }
+}
+
+function encolarGasto(gasto) {
+  const v = viajeAuto(gasto.fecha);
+  const item = { ...gasto, id: crypto.randomUUID(), created_at: new Date().toISOString(), viaje_id: v ? v.id : null };
+  const cola = leerCola();
+  cola.push(item);
+  if (!guardarCola(cola)) return null;
+  return { ...item, pendiente: true };
+}
+
+function quitarDeCola(id) {
+  guardarCola(leerCola().filter((g) => g.id !== id));
+}
+
+let subiendo = false;
+async function subirPendientes() {
+  if (!remote || !state.user || subiendo) return;
+  const cola = leerCola();
+  if (!cola.length) return;
+  subiendo = true;
+  let subidos = 0;
+  try {
+    for (const g of cola) {
+      try {
+        await state.store.add(g);
+        quitarDeCola(g.id); subidos++;
+      } catch (e) {
+        if (e?.code === "23505") { quitarDeCola(g.id); subidos++; continue; } // ya estaba subido
+        if (e?.code === "23503" && g.viaje_id) {                             // el viaje ya no existe
+          try { await state.store.add({ ...g, viaje_id: null }); quitarDeCola(g.id); subidos++; continue; } catch {}
+        }
+        console.error(e);
+        break; // sin red o error: se reintenta más tarde, en orden
+      }
+    }
+  } finally {
+    subiendo = false;
+  }
+  if (subidos) {
+    toast(subidos === 1 ? "Subido 1 gasto que estaba sin conexión" : `Subidos ${subidos} gastos que estaban sin conexión`);
+    await Promise.all([cargar(), cargarViajes()]);
+  }
 }
 
 /* ---------- Dashboard de gráficos ---------- */
@@ -925,9 +1024,12 @@ async function borrarViaje() {
 async function cargarCategorias() {
   try {
     state.categorias = await state.store.listCategorias();
+    guardarCopia("categorias", state.categorias);
   } catch (e) {
     console.error(e);
-    toast("No se han podido cargar las categorías");
+    const copia = sinRed(e) && leerCopia("categorias");
+    if (copia) state.categorias = copia;
+    else toast("No se han podido cargar las categorías");
   }
   renderCategoryPicker();
   pintarCategoriasAjustes();
@@ -1317,7 +1419,9 @@ async function refrescarSuscripcion() {
 }
 
 async function cerrarSesion() {
-  if (!confirm("¿Cerrar sesión en este dispositivo?")) return;
+  const n = leerCola().length;
+  const aviso = n ? `Tienes ${n === 1 ? "1 gasto" : n + " gastos"} sin subir. Se subirán cuando vuelvas a entrar con esta cuenta en este dispositivo. ` : "";
+  if (!confirm(`${aviso}¿Cerrar sesión en este dispositivo?`)) return;
   // Este dispositivo deja de recibir los avisos de esta cuenta.
   try {
     const sub = await suscripcionActual();
@@ -1329,7 +1433,8 @@ async function cerrarSesion() {
 async function borrar(g) {
   if (!confirm(`¿Borrar ${fmt(g.importe)} de ${catInfo(g.categoria).nombre}?`)) return;
   try {
-    await state.store.remove(g.id);
+    if (g.pendiente) quitarDeCola(g.id);
+    else await state.store.remove(g.id);
     quitarGasto(g.id);
     aplicarRango();
     pintar();
@@ -1344,12 +1449,20 @@ async function borrar(g) {
 function quitarGasto(id) {
   state.rango = state.rango.filter((x) => x.id !== id);
   state.gastosViaje = state.gastosViaje.filter((x) => x.id !== id);
+  actualizarCopias();
 }
 function ponerGasto(g) {
   quitarGasto(g.id);
   const [from, to] = rangoActual();
   if (g.fecha >= from && g.fecha <= to) state.rango.unshift(g);
   if (g.viaje_id) state.gastosViaje.unshift(g);
+  actualizarCopias();
+}
+// La copia para abrir sin conexión no guarda los pendientes (esos ya están en la cola).
+function actualizarCopias() {
+  const [from, to] = rangoActual();
+  guardarCopia("rango", { from, to, gastos: state.rango.filter((g) => !g.pendiente) });
+  guardarCopia("viajes", { viajes: state.viajes, gastosViaje: state.gastosViaje.filter((g) => !g.pendiente) });
 }
 
 /* ---------- Menú del gasto (mantener pulsado, como en iPhone) ---------- */
@@ -1434,6 +1547,15 @@ function abrirMenu(el, construir) {
 }
 
 function abrirMenuGasto(g, el) {
+  if (g.pendiente) {
+    abrirMenu(el, (menu) => {
+      const info = document.createElement("div");
+      info.className = "ctx-info";
+      info.textContent = "Sin conexión: se subirá al volver internet";
+      menu.append(info, filaMenu("Eliminar", ICONO_PAPELERA, () => { cerrarMenu(); borrar(g); }, { peligro: true }));
+    });
+    return;
+  }
   abrirMenu(el, (menu, colocar) => {
     const v = viajeDe(g);
     const principal = () => {
@@ -1557,7 +1679,16 @@ async function añadir(ev) {
     toast(ed ? "Gasto guardado" : `Apuntado: ${fmt(importe)} en ${catInfo(gasto.categoria).nombre}${v ? ` · ${v.nombre}` : ""}`);
   } catch (e) {
     console.error(e);
-    toast("No se ha podido guardar");
+    const pendiente = !ed && remote && sinRed(e) ? encolarGasto(gasto) : null;
+    if (pendiente) {
+      ponerGasto(pendiente);
+      aplicarRango();
+      pintar();
+      $("#add-sheet").close();
+      toast("Sin conexión: guardado en el móvil. Se subirá solo al volver internet");
+    } else {
+      toast(sinRed(e) ? "Sin conexión: no se ha podido guardar" : "No se ha podido guardar");
+    }
   } finally {
     btn.disabled = false;
   }
@@ -1734,12 +1865,14 @@ async function mostrarApp() {
   if (location.hash) history.replaceState(null, "", location.pathname + location.search);
   mostrarPantalla("#shell");
   cambiarVista(state.vista);
-  state.presupuesto = await state.store.getBudget().catch(() => 0);
+  state.presupuesto = await state.store.getBudget()
+    .catch(() => Number(state.user?.user_metadata?.presupuesto) || 0);
   await cargarCategorias();
   await Promise.all([cargar(), cargarViajes()]);
   if (state.vista === "ajustes") llenarAjustes();
   if (new URLSearchParams(location.search).has("nuevo")) abrirAñadir();
   refrescarSuscripcion();
+  subirPendientes();
 }
 
 function mostrarLogin() {
@@ -1935,8 +2068,10 @@ function init() {
     if (document.visibilityState === "visible" && !$("#shell").classList.contains("hidden")) {
       cargar();
       cargarViajes();
+      subirPendientes();
     }
   });
+  window.addEventListener("online", () => subirPendientes());
 
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("sw.js").catch(() => {});

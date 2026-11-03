@@ -540,3 +540,7 @@ details.manual summary::-webkit-details-marker { display: none; }
 #cat-sheet .sheet { max-height: 92vh; overflow-y: auto; }
 .cat span { max-width: 100%; text-align: center; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
 .sheet-dialog { overflow-y: auto; }
+
+/* Gastos guardados sin conexión, pendientes de subir */
+.item.pendiente .amt { opacity: .7; }
+.item .meta .pend { color: var(--warn, #fbbf24); }
