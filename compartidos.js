@@ -283,7 +283,7 @@ function pintarSaldos(v, cont, sal) {
 
 async function saldar(v, p, btn) {
   const de = nombreMiembro(v, p.de), a = nombreMiembro(v, p.a);
-  if (!confirm(`¿Apuntar que ${de} le ha pagado ${fmt(deCent(p.c))} a ${a}?`)) return;
+  if (!(await confirmar({ titulo: "Saldar deuda", texto: `Se apunta que ${de} le ha pagado ${fmt(deCent(p.c))} a ${a}.`, aceptar: "Apuntar pago" }))) return;
   btn.disabled = true;
   try {
     await rpc("guardar_movimiento", {
@@ -310,7 +310,9 @@ function pintarPersonas(v, cont) {
     const etiqueta = yo && m.id === yo.id ? "Tú" : m.user_id === v.user_id ? "Creó el viaje" : m.user_id ? "Con cuenta" : "Sin cuenta todavía";
     fila.innerHTML = `<span class="avatar small-avatar"></span><div class="info"><div class="note"></div><div class="small muted">${etiqueta}</div></div>
       <button type="button" class="more" aria-label="Opciones">${icono(ICONO_MAS)}</button>`;
-    fila.querySelector(".avatar").textContent = m.nombre.trim().charAt(0).toUpperCase();
+    const av = fila.querySelector(".avatar");
+    av.textContent = m.nombre.trim().charAt(0).toUpperCase();
+    av.style.background = colorPersona(m.nombre);
     fila.querySelector(".note").textContent = m.nombre;
     fila.querySelector(".more").addEventListener("click", () => menuPersona(v, m, fila));
     mantenerPulsado(fila, () => menuPersona(v, m, fila));
@@ -347,7 +349,7 @@ function menuPersona(v, m, el) {
 }
 
 async function nuevaPersona(v) {
-  const nombre = (prompt("Nombre de la persona") || "").trim();
+  const nombre = (await preguntar({ titulo: "Añadir persona", texto: "Podrá unirse después con el enlace y elegir este nombre.", placeholder: "Nombre", aceptar: "Añadir" })) || "";
   if (!nombre) return;
   try {
     await rpc("nuevo_miembro", { p_viaje: v.id, p_nombre: nombre.slice(0, 30) });
@@ -360,7 +362,7 @@ async function nuevaPersona(v) {
 }
 
 async function renombrarPersona(v, m) {
-  const nombre = (prompt("Nombre", m.nombre) || "").trim();
+  const nombre = (await preguntar({ titulo: "Cambiar nombre", valor: m.nombre, placeholder: "Nombre", aceptar: "Guardar" })) || "";
   if (!nombre || nombre === m.nombre) return;
   try {
     await rpc("renombrar_miembro", { p_miembro: m.id, p_nombre: nombre.slice(0, 30) });
@@ -374,7 +376,9 @@ async function renombrarPersona(v, m) {
 async function quitarPersona(v, m) {
   const yo = yoEn(v);
   const salir = yo && yo.id === m.id;
-  if (!confirm(salir ? `¿Salir del viaje a ${v.nombre}?` : `¿Quitar a ${m.nombre} del viaje?`)) return;
+  if (!(await confirmar(salir
+    ? { titulo: "Salir del viaje", texto: `Dejarás de ver el viaje a ${v.nombre}.`, aceptar: "Salir", peligro: true }
+    : { titulo: `Quitar a ${m.nombre}`, texto: "Dejará de estar en el viaje.", aceptar: "Quitar", peligro: true }))) return;
   try {
     await rpc("quitar_miembro", { p_miembro: m.id });
     if (salir) {
@@ -397,14 +401,22 @@ async function refrescarCompartido(v) {
 
 /* ---------- Compartir un viaje e invitar ---------- */
 
+// Color fijo para cada nombre, de la misma paleta que las categorías.
+function colorPersona(nombre) {
+  let h = 0;
+  for (const ch of String(nombre).trim().toLowerCase()) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+  return COLORES[h % COLORES.length];
+}
+
 function miNombre() {
   const u = state.user || {};
   const n = (u.user_metadata?.full_name || u.user_metadata?.name || "").trim().split(/\s+/)[0];
-  return n || (u.email || "").split("@")[0] || "Yo";
+  const t = n || (u.email || "").split("@")[0] || "Yo";
+  return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
 async function compartirViaje(v) {
-  const nombre = prompt("Para compartir el viaje, ¿con qué nombre te verán los demás?", miNombre());
+  const nombre = await preguntar({ titulo: "Compartir viaje", texto: "¿Con qué nombre te verán los demás?", valor: miNombre(), placeholder: "Tu nombre", aceptar: "Compartir" });
   if (nombre === null) return;
   try {
     await rpc("compartir_viaje", { p_viaje: v.id, p_mi_nombre: nombre.trim().slice(0, 30) || miNombre() });
@@ -533,6 +545,10 @@ function abrirMov(v, mv = null, { desdeGasto = null } = {}) {
   const catActual = mv ? catPorNombre(mv.categoria).nombre : desdeGasto ? catInfo(desdeGasto.categoria).nombre : catInfo(state.categoria).nombre;
   $("#mov-cat").value = catActual;
   if (!$("#mov-cat").value && state.categorias.length) $("#mov-cat").selectedIndex = 0;
+  fichas($("#mov-payer"));
+  fichas($("#mov-to"));
+  fichas($("#mov-cat"), (nombre) => { const c = catPorNombre(nombre); return icono(c.icono, ` style="color:${c.color}"`); });
+  pintarBotonFecha("mov-date");
 
   // Reparto: en un gasto nuevo, entre todos a partes iguales.
   const partes = new Map((mv?.tipo === "gasto" ? mv.movimiento_partes : []).map((p) => [p.miembro_id, p]));
@@ -650,7 +666,7 @@ async function guardarMov(ev) {
 }
 
 async function borrarMov(v, mv) {
-  if (!confirm(`¿Borrar «${mv.titulo}» (${fmt(Number(mv.importe))})? Se quita para todos los del viaje.`)) return;
+  if (!(await confirmar({ titulo: "Borrar gasto", texto: `«${mv.titulo}» (${fmt(Number(mv.importe))}) se quita para todos los del viaje.`, aceptar: "Borrar", peligro: true }))) return;
   try {
     await rpc("borrar_movimiento", { p_id: mv.id });
     if ($("#mov-sheet").open) $("#mov-sheet").close();
