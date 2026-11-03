@@ -447,7 +447,8 @@ function prepararPregunta() {
 /* ---------- Calendario: un día o ida y vuelta, como al buscar vuelos ---------- */
 
 const ICONO_CALENDARIO = "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4";
-const cal = { rango: true, ini: null, fin: null, resolver: null };
+const cal = { rango: true, ini: null, fin: null, hover: null, pagina: 0, resolver: null };
+const SEMANA = '<div class="cal-week cal-week-m" aria-hidden="true"><span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span></div>';
 
 function sumarDias(iso, n) {
   const d = parseISO(iso);
@@ -475,6 +476,7 @@ function elegirFechas({ inicio = null, fin = null, rango = true, titulo = "" } =
     cal.rango = rango;
     cal.ini = inicio;
     cal.fin = rango ? fin : null;
+    cal.hover = null;
     cal.resolver = (r) => { cal.resolver = null; resolve(r); };
     $("#cal-title").textContent = titulo || (rango ? "Ida y vuelta" : "Fecha");
     $("#cal-sel").classList.toggle("hidden", !rango);
@@ -484,7 +486,10 @@ function elegirFechas({ inicio = null, fin = null, rango = true, titulo = "" } =
     pintarCal();
     $("#cal-sheet").showModal();
     const cont = $("#cal-months");
+    const meses = [...cont.children];
     const foco = cont.querySelector(`[data-mes="${(inicio || hoyISO()).slice(0, 7)}"]`);
+    cal.pagina = Math.max(0, meses.indexOf(foco));
+    paginaCal();
     cont.scrollTop = foco ? foco.offsetTop - 4 : 0;
   });
 }
@@ -501,7 +506,7 @@ function construirMeses(a, b) {
     const d0 = new Date(y, m, 1);
     const dias = new Date(y, m + 1, 0).getDate();
     const nombre = d0.toLocaleDateString("es-ES", { month: "long", year: "numeric" }).replace(" de ", " ");
-    html += `<section class="cal-month" data-mes="${isoDate(d0).slice(0, 7)}"><h3>${esc(nombre)}</h3><div class="cal-grid">${"<i></i>".repeat((d0.getDay() + 6) % 7)}`;
+    html += `<section class="cal-month" data-mes="${isoDate(d0).slice(0, 7)}"><h3>${esc(nombre)}</h3>${SEMANA}<div class="cal-grid">${"<i></i>".repeat((d0.getDay() + 6) % 7)}`;
     for (let d = 1; d <= dias; d++) html += `<button type="button" class="cal-d" data-d="${isoDate(new Date(y, m, d))}"><span>${d}</span></button>`;
     html += "</div></section>";
   }
@@ -510,14 +515,17 @@ function construirMeses(a, b) {
 
 function pintarCal() {
   const hoy = hoyISO();
-  const tramo = Boolean(cal.ini && cal.fin && cal.fin !== cal.ini);
+  // En el ordenador, al pasar el ratón ya se ve el tramo antes de elegir la vuelta.
+  const fin = cal.fin || (cal.rango && cal.ini && cal.hover > cal.ini ? cal.hover : null);
+  const tramo = Boolean(cal.ini && fin && fin !== cal.ini);
   for (const b of $$("#cal-months .cal-d")) {
     const d = b.dataset.d;
     b.classList.toggle("today", d === hoy);
     b.classList.toggle("ini", d === cal.ini);
-    b.classList.toggle("fin", Boolean(cal.fin) && d === cal.fin);
-    b.classList.toggle("en", tramo && d > cal.ini && d < cal.fin);
-    b.classList.toggle("tramo", tramo && (d === cal.ini || d === cal.fin));
+    b.classList.toggle("fin", Boolean(fin) && d === fin);
+    b.classList.toggle("previa", !cal.fin && Boolean(fin) && d === fin);
+    b.classList.toggle("en", tramo && d > cal.ini && d < fin);
+    b.classList.toggle("tramo", tramo && (d === cal.ini || d === fin));
   }
   if (!cal.rango) return;
   $("#cal-ini").textContent = cal.ini ? textoDiaLargo(cal.ini) : "Elige";
@@ -531,6 +539,15 @@ function pintarCal() {
     const n = diasEntre(cal.ini, cal.fin);
     ok.textContent = `Listo · ${n} ${n === 1 ? "día" : "días"}`;
   } else ok.textContent = cal.ini ? "Elige la vuelta" : "Elige la ida";
+}
+
+// En el ordenador se ven dos meses a la vez y se pasa con flechas; en el móvil, lista con scroll.
+function paginaCal() {
+  const meses = [...$("#cal-months").children];
+  cal.pagina = Math.min(Math.max(0, cal.pagina), meses.length - 2);
+  meses.forEach((m, i) => m.classList.toggle("vis", i === cal.pagina || i === cal.pagina + 1));
+  $("#cal-prev").disabled = cal.pagina <= 0;
+  $("#cal-next").disabled = cal.pagina >= meses.length - 2;
 }
 
 function terminarCal(valor) {
@@ -549,8 +566,18 @@ function prepararCalendario() {
     if (!cal.ini || cal.fin || d < cal.ini) { cal.ini = d; cal.fin = null; }
     else if (diasEntre(cal.ini, d) > 366) { toast("Un viaje puede durar como mucho un año"); return; }
     else cal.fin = d;
+    cal.hover = null;
     pintarCal();
   });
+  $("#cal-months").addEventListener("mouseover", (e) => {
+    const b = e.target.closest(".cal-d");
+    if (!b || !cal.rango || !cal.ini || cal.fin || cal.hover === b.dataset.d) return;
+    cal.hover = b.dataset.d;
+    pintarCal();
+  });
+  $("#cal-months").addEventListener("mouseleave", () => { if (cal.hover) { cal.hover = null; pintarCal(); } });
+  $("#cal-prev").addEventListener("click", () => { cal.pagina -= 1; paginaCal(); });
+  $("#cal-next").addEventListener("click", () => { cal.pagina += 1; paginaCal(); });
   $("#cal-box-ini").addEventListener("click", () => { if (cal.ini && cal.fin) { cal.fin = null; pintarCal(); } });
   $("#cal-ok").addEventListener("click", () => { if (cal.ini && cal.fin) terminarCal({ inicio: cal.ini, fin: cal.fin }); });
   $$("#cal-quick [data-dias]").forEach((b) => b.addEventListener("click", () => terminarCal({ inicio: sumarDias(hoyISO(), Number(b.dataset.dias)) })));

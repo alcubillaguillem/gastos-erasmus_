@@ -669,3 +669,22 @@ select {
 .chip[aria-checked="true"] { border-color: var(--accent); background: var(--accent-bg); color: var(--text); font-weight: 600; }
 .chip:hover { border-color: var(--series-dim); }
 .chip[aria-checked="true"]:hover { border-color: var(--accent); }
+
+/* Calendario en el ordenador: dos meses a la vez, con flechas y vista previa del tramo */
+.cal-nav { display: none; gap: 8px; margin-left: auto; margin-right: 8px; }
+.cal-nav .round-btn:disabled { opacity: .35; cursor: default; }
+.cal-week-m { display: none; }
+.cal-d.previa span { background: color-mix(in srgb, var(--accent) 45%, transparent); color: var(--text); }
+@media (min-width: 900px) {
+  .cal-dialog { width: min(100% - 48px, 760px); }
+  .cal-dialog .sheet { padding: 24px; gap: 16px; }
+  .cal-nav { display: flex; }
+  .cal-sel, #cal-quick { max-width: 420px; }
+  .cal-dialog .sheet > .cal-week { display: none; }
+  .cal-week-m { display: grid; border-bottom: 0; padding-bottom: 4px; }
+  .cal-months { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; max-height: none; overflow: visible; margin: 0; padding: 0; }
+  .cal-month { display: none; }
+  .cal-month.vis { display: block; }
+  .cal-month h3 { margin: 0 0 10px; text-align: center; }
+  #cal-ok { width: auto; align-self: flex-end; min-width: 220px; }
+}
